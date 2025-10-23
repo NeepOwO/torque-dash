@@ -17,7 +17,7 @@ const { sequelize } = require('./models');
 const config = require('./config/config');
 const { engine } = require('express-handlebars');
 const flash = require('connect-flash');
-const session = require('cookie-session');
+const session = require('express-session');
 const passport = require('passport');
 const User = require('./models').User;
 require('./config/passport')(passport); 
@@ -32,8 +32,13 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 // app.use(logger('combined'));
 app.use(session({
-    keys: config.session.keys,
-    maxAge: 24 * 60 * 60 * 1000
+    secret: config.session.keys,
+    resave: false,
+    saveUninitialized: false,
+    cookie: { 
+        maxAge: 24 * 60 * 60 * 1000,
+        secure: false // set to true if using HTTPS
+    }
 }));
 app.use(flash());
 app.use(passport.initialize());
