@@ -957,7 +957,7 @@ class IndicatorLight extends DashboardWidget {
         this.ctx.restore();
         
         // Draw label
-        if (this.config.showLabel) {
+        if (this.config.showLabel && this.config.label) {
             this.ctx.fillStyle = this.config.textColor;
             this.ctx.font = `${this.config.fontSize}px Arial`;
             this.ctx.textAlign = 'center';
@@ -970,14 +970,15 @@ class IndicatorLight extends DashboardWidget {
         
         // Draw value if enabled
         if (this.config.showValue) {
+            const valuePos = this.getValuePosition(centerX, centerY + this.config.size / 2 + this.config.fontSize * 2 + 15, 0);
             this.ctx.fillStyle = this.config.textColor;
-            this.ctx.font = `${this.config.fontSize * 0.8}px Arial`;
+            this.ctx.font = `${this.config.valueSize}px Arial`;
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(
-                `${this.value.toFixed(1)} ${this.config.unit}`,
-                centerX,
-                centerY + this.config.size / 2 + this.config.fontSize * 2 + 15
-            );
+            this.ctx.fillText(this.formatValue(this.value), valuePos.x, valuePos.y);
+            if (this.config.showUnit && this.config.unit) {
+                this.ctx.font = `${this.config.unitSize}px Arial`;
+                this.ctx.fillText(this.config.unit, valuePos.x + this.ctx.measureText(this.formatValue(this.value)).width / 2 + 5, valuePos.y);
+            }
         }
     }
 
