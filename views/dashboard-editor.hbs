@@ -50,6 +50,9 @@
                 <button class="btn btn-block btn-sm btn-outline-warning mb-2" data-widget="indicator-light">
                     <i class="fas fa-lightbulb"></i> Indicator Light
                 </button>
+                <button class="btn btn-block btn-sm btn-outline-success mb-2" data-widget="gps-map">
+                    <i class="fas fa-map-marked-alt"></i> GPS Map
+                </button>
             </div>
 
             <hr>
@@ -127,6 +130,7 @@
 <script src="/js/lib/jquery-3.3.1.min.js"></script>
 <script src="/js/lib/bootstrap.bundle.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
 <script src="/js/widgets.js"></script>
 <script src="/js/dashboard-editor.js"></script>
 <script src="/js/widget-properties-ui.js"></script>
@@ -291,12 +295,25 @@ $(document).ready(function() {
         socket.emit('join-session', sessionId);
         socket.on('sensor-data', function(data) {
             if (data.values) {
+                // Update regular widgets
                 Object.keys(data.values).forEach(key => {
                     const value = parseFloat(data.values[key]);
                     if (!isNaN(value)) {
                         editor.updateWidgetBySensor(key, value);
                     }
                 });
+                
+                // Update GPS widgets if GPS data is available
+                const lat = parseFloat(data.values['kff1006']);
+                const lon = parseFloat(data.values['kff1005']);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    editor.updateGPSData({
+                        lat: lat,
+                        lon: lon,
+                        speed: parseFloat(data.values['kff1001']) || 0,
+                        bearing: parseFloat(data.values['kff123b']) || 0
+                    });
+                }
             }
         });
         liveSession = socket;

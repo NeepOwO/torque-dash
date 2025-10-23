@@ -115,6 +115,8 @@ class DashboardLiveViewer {
                 return new TemperatureGauge(widget.canvas, widget.config || {});
             case 'indicator-light':
                 return new IndicatorLight(widget.canvas, widget.config || {});
+            case 'gps-map':
+                return new GPSMapWidget(widget.canvas, widget.config || {});
             default:
                 return new CircularGauge(widget.canvas, widget.config || {});
         }

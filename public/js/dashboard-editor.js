@@ -174,6 +174,8 @@ class DashboardEditor {
                 return new TemperatureGauge(widget.canvas, widget.config || {});
             case 'indicator-light':
                 return new IndicatorLight(widget.canvas, widget.config || {});
+            case 'gps-map':
+                return new GPSMapWidget(widget.canvas, widget.config || {});
             default:
                 return new CircularGauge(widget.canvas, widget.config || {});
         }
@@ -206,6 +208,20 @@ class DashboardEditor {
             }
         });
         this.render();
+    }
+    
+    updateGPSData(gpsData) {
+        // Special method for updating GPS widgets with lat/lon/speed/bearing
+        this.widgets.forEach(widget => {
+            if (widget.type === 'gps-map' && widget.instance) {
+                widget.instance.updateGPS(
+                    gpsData.lat,
+                    gpsData.lon,
+                    gpsData.speed,
+                    gpsData.bearing
+                );
+            }
+        });
     }
 
     render() {

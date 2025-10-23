@@ -1005,6 +1005,214 @@ class IndicatorLight extends DashboardWidget {
     }
 }
 
+class GPSMapWidget extends DashboardWidget {
+    getDefaultConfig() {
+        return {
+            ...super.getDefaultConfig(),
+            zoom: 15,
+            mapStyle: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            showTrack: true,
+            trackColor: '#00ff00',
+            trackWidth: 3,
+            showMarker: true,
+            markerColor: '#ff0000',
+            showSpeed: true,
+            maxTrackPoints: 1000,
+            // GPS sensor keys
+            latKey: 'kff1006',
+            lonKey: 'kff1005',
+            speedKey: 'kff1001',
+            bearingKey: 'kff123b'
+        };
+    }
+
+    constructor(canvas, config) {
+        super(canvas, config);
+        this.mapContainer = null;
+        this.map = null;
+        this.marker = null;
+        this.trackLine = null;
+        this.trackPoints = [];
+        this.initialized = false;
+        
+        // GPS data
+        this.currentLat = null;
+        this.currentLon = null;
+        this.currentSpeed = 0;
+        this.currentBearing = 0;
+    }
+
+    initMap() {
+        if (this.initialized || typeof L === 'undefined') return;
+        
+        // Create map container div
+        this.mapContainer = document.createElement('div');
+        this.mapContainer.style.width = this.canvas.width + 'px';
+        this.mapContainer.style.height = this.canvas.height + 'px';
+        this.mapContainer.style.position = 'absolute';
+        this.mapContainer.style.top = '0';
+        this.mapContainer.style.left = '0';
+        this.mapContainer.style.zIndex = '1000';
+        
+        // Insert after canvas
+        this.canvas.parentNode.insertBefore(this.mapContainer, this.canvas.nextSibling);
+        
+        // Initialize Leaflet map
+        try {
+            this.map = L.map(this.mapContainer, {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([0, 0], this.config.zoom);
+            
+            // Add tile layer
+            L.tileLayer(this.config.mapStyle, {
+                maxZoom: 19
+            }).addTo(this.map);
+            
+            // Create marker
+            if (this.config.showMarker) {
+                const markerIcon = L.divIcon({
+                    className: 'gps-marker',
+                    html: `<div style="background: ${this.config.markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+                    iconSize: [20, 20],
+                    iconAnchor: [10, 10]
+                });
+                this.marker = L.marker([0, 0], { icon: markerIcon }).addTo(this.map);
+                
+                // Add speed popup
+                if (this.config.showSpeed) {
+                    this.marker.bindPopup('Speed: 0 km/h');
+                }
+            }
+            
+            // Create track line
+            if (this.config.showTrack) {
+                this.trackLine = L.polyline([], {
+                    color: this.config.trackColor,
+                    weight: this.config.trackWidth
+                }).addTo(this.map);
+            }
+            
+            this.initialized = true;
+        } catch (err) {
+            console.error('Failed to initialize GPS map:', err);
+        }
+    }
+
+    setValue(value) {
+        // Value can be an object with lat/lon or single sensor value
+        if (typeof value === 'object' && value.lat !== undefined && value.lon !== undefined) {
+            this.currentLat = value.lat;
+            this.currentLon = value.lon;
+            this.currentSpeed = value.speed || 0;
+            this.currentBearing = value.bearing || 0;
+        } else {
+            // Single sensor value (not typical for GPS widget)
+            this.value = value;
+        }
+        
+        this.draw();
+    }
+
+    updateGPS(lat, lon, speed, bearing) {
+        this.currentLat = lat;
+        this.currentLon = lon;
+        this.currentSpeed = speed || 0;
+        this.currentBearing = bearing || 0;
+        this.draw();
+    }
+
+    draw() {
+        if (!this.initialized) {
+            this.initMap();
+        }
+        
+        if (!this.map || this.currentLat === null || this.currentLon === null) {
+            // Draw placeholder
+            this.clear();
+            this.ctx.fillStyle = this.config.backgroundColor;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.fillStyle = this.config.textColor;
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText('GPS Map - Waiting for data...', this.canvas.width / 2, this.canvas.height / 2);
+            return;
+        }
+        
+        // Update marker position
+        if (this.marker && this.config.showMarker) {
+            this.marker.setLatLng([this.currentLat, this.currentLon]);
+            
+            if (this.config.showSpeed) {
+                this.marker.setPopupContent(`Speed: ${Math.round(this.currentSpeed)} km/h`);
+            }
+            
+            // Rotate marker based on bearing if available
+            if (this.currentBearing !== 0) {
+                const markerElement = this.marker.getElement();
+                if (markerElement) {
+                    markerElement.style.transform += ` rotate(${this.currentBearing}deg)`;
+                }
+            }
+        }
+        
+        // Add point to track
+        if (this.config.showTrack && this.trackLine) {
+            this.trackPoints.push([this.currentLat, this.currentLon]);
+            
+            // Limit track points
+            if (this.trackPoints.length > this.config.maxTrackPoints) {
+                this.trackPoints.shift();
+            }
+            
+            this.trackLine.setLatLngs(this.trackPoints);
+        }
+        
+        // Center map on current position (only once or when requested)
+        if (this.trackPoints.length === 1) {
+            this.map.setView([this.currentLat, this.currentLon], this.config.zoom);
+        }
+        
+        // Hide canvas (map container is visible)
+        this.canvas.style.display = 'none';
+    }
+
+    clear() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    destroy() {
+        if (this.map) {
+            this.map.remove();
+        }
+        if (this.mapContainer && this.mapContainer.parentNode) {
+            this.mapContainer.parentNode.removeChild(this.mapContainer);
+        }
+        super.destroy();
+    }
+
+    updateConfig(newConfig) {
+        super.updateConfig(newConfig);
+        
+        // Update map if config changes
+        if (this.map) {
+            if (newConfig.zoom !== undefined) {
+                this.map.setZoom(newConfig.zoom);
+            }
+            
+            if (newConfig.trackColor !== undefined && this.trackLine) {
+                this.trackLine.setStyle({ color: newConfig.trackColor });
+            }
+            
+            if (newConfig.trackWidth !== undefined && this.trackLine) {
+                this.trackLine.setStyle({ weight: newConfig.trackWidth });
+            }
+        }
+    }
+}
+
 // Export classes
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
@@ -1015,7 +1223,8 @@ if (typeof module !== 'undefined' && module.exports) {
         SpeedometerGauge,
         TachometerGauge,
         TemperatureGauge,
-        IndicatorLight
+        IndicatorLight,
+        GPSMapWidget
     };
 }
 
