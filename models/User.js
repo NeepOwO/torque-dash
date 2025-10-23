@@ -25,6 +25,12 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: false,
             allowNull: false,
             comment: 'User-specific live-only mode: stream data without saving logs'
+        },
+        role: {
+            type: DataTypes.STRING,
+            defaultValue: 'user',
+            allowNull: false,
+            comment: 'User role: admin or user'
         }
     }, {
         hooks: {
@@ -43,12 +49,21 @@ module.exports = (sequelize, DataTypes) => {
 
     // Static method for user data validation
     User.validate = function(user) {
-        const schema = {
-            email: Joi.string().required().email({ minDomainAtoms: 2 }).error(new Error('Please provide a valid email.')),
-            password: Joi.string().min(8).required(),
-            confirmPassword: Joi.string().valid(Joi.ref('password')).error(new Error('Passwords do not match.'))
-        }
-        return Joi.validate(user, schema);
+        const schema = Joi.object({
+            email: Joi.string().required().email().messages({
+                'string.email': 'Please provide a valid email.',
+                'any.required': 'Email is required.'
+            }),
+            password: Joi.string().min(8).required().messages({
+                'string.min': 'Password must be at least 8 characters.',
+                'any.required': 'Password is required.'
+            }),
+            confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
+                'any.only': 'Passwords do not match.',
+                'any.required': 'Please confirm your password.'
+            })
+        });
+        return schema.validate(user);
     }
 
     // Instance method for password comparison
