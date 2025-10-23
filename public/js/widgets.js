@@ -30,26 +30,70 @@ class DashboardWidget {
 
     getDefaultConfig() {
         return {
+            // Basic
             minValue: 0,
             maxValue: 100,
             unit: '',
+            label: 'Sensor',
+            
+            // Colors
             backgroundColor: 'transparent',
             primaryColor: '#00ff00',
             secondaryColor: '#333333',
             textColor: '#ffffff',
-            fontSize: 14,
-            showValue: true,
-            showLabel: true,
-            label: 'Sensor',
-            // New: Image support
+            
+            // Angles and Rotation (for circular widgets)
+            startAngle: 0,        // Starting angle in degrees (0-360)
+            endAngle: 360,        // Ending angle in degrees (0-360)
+            rotation: 0,          // Widget rotation in degrees (0-360)
+            
+            // Ticks and Scale
+            tickCount: 10,        // Number of tick marks
+            showTicks: true,      // Show tick marks
+            showNumbers: true,    // Show numbers on scale
+            majorTickInterval: 2, // Every Nth tick is major
+            tickLength: 10,       // Tick mark length in pixels
+            
+            // Value Display
+            showValue: true,           // Show numeric value
+            showLabel: true,           // Show label
+            showUnit: true,            // Show unit
+            valuePosition: 'center',   // 'center', 'top', 'bottom', 'custom'
+            valueCustomX: 0,           // Custom X position (if valuePosition='custom')
+            valueCustomY: 0,           // Custom Y position (if valuePosition='custom')
+            valueFormat: '0',          // '0', '0.0', '0.00'
+            valueSize: 24,             // Value font size
+            unitSize: 14,              // Unit font size
+            fontSize: 14,              // Label font size
+            
+            // Needle/Pointer (for gauge widgets)
+            needleLength: 0.7,    // Length as ratio of radius (0-1)
+            needleWidth: 3,       // Width in pixels
+            needleColor: null,    // null = use primaryColor
+            
+            // Color Zones
+            zones: [],            // Array of {from, to, color} objects
+            useZones: false,      // Enable color zones
+            
+            // Images
             backgroundImageUrl: null,
             foregroundImageUrl: null,
             backgroundOpacity: 0.5,
             foregroundOpacity: 1.0,
-            imageMode: 'background', // 'background', 'dual', 'overlay'
-            // New: Smoothing and delay
-            smoothing: 0.2, // 0 = instant, 1 = very smooth
-            updateDelay: 0, // milliseconds delay
+            imageMode: 'background',    // 'background', 'dual', 'overlay'
+            imageStartAngle: 0,         // Image fill start angle
+            imageEndAngle: 360,         // Image fill end angle
+            imageFillMode: 'linear',    // 'linear', 'circular', 'radial'
+            imageScale: 1.0,            // Image scale factor
+            imageOffsetX: 0,            // Image offset X
+            imageOffsetY: 0,            // Image offset Y
+            
+            // Animation
+            smoothing: 0.2,             // Value smoothing (0-1)
+            updateDelay: 0,             // Update delay in ms
+            animationDuration: 500,     // Animation duration in ms
+            animationEasing: 'ease-in-out', // 'linear', 'ease-in-out', 'bounce'
+            
             // Sensor mapping
             sensorKeys: [] // Array of sensor keys this widget responds to
         };
@@ -194,6 +238,74 @@ class DashboardWidget {
         }
         
         this.draw();
+    }
+
+    // Helper: Format value according to valueFormat
+    formatValue(value) {
+        const format = this.config.valueFormat || '0';
+        if (format === '0') {
+            return Math.round(value).toString();
+        } else if (format === '0.0') {
+            return value.toFixed(1);
+        } else if (format === '0.00') {
+            return value.toFixed(2);
+        }
+        return value.toString();
+    }
+
+    // Helper: Get color for value based on zones
+    getColorForValue(value) {
+        if (this.config.useZones && this.config.zones && this.config.zones.length > 0) {
+            for (const zone of this.config.zones) {
+                if (value >= zone.from && value <= zone.to) {
+                    return zone.color;
+                }
+            }
+        }
+        return this.config.primaryColor;
+    }
+
+    // Helper: Convert degrees to radians
+    degToRad(degrees) {
+        return (degrees * Math.PI) / 180;
+    }
+
+    // Helper: Normalize angle to 0-360 range
+    normalizeAngle(angle) {
+        angle = angle % 360;
+        if (angle < 0) angle += 360;
+        return angle;
+    }
+
+    // Helper: Get value position coordinates
+    getValuePosition(centerX, centerY, radius) {
+        const pos = this.config.valuePosition;
+        
+        switch (pos) {
+            case 'center':
+                return { x: centerX, y: centerY };
+            case 'top':
+                return { x: centerX, y: centerY - radius * 0.6 };
+            case 'bottom':
+                return { x: centerX, y: centerY + radius * 0.6 };
+            case 'custom':
+                return { 
+                    x: centerX + this.config.valueCustomX, 
+                    y: centerY + this.config.valueCustomY 
+                };
+            default:
+                return { x: centerX, y: centerY };
+        }
+    }
+
+    // Helper: Draw rotated context
+    withRotation(x, y, rotation, callback) {
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.rotate(this.degToRad(rotation));
+        this.ctx.translate(-x, -y);
+        callback();
+        this.ctx.restore();
     }
 }
 
