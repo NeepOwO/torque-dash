@@ -454,7 +454,7 @@ curl http://localhost:3000/api/live-sessions/abc123
 
 ```bash
 # 1. Установка
-git clone https://github.com/yourusername/torque-dash.git
+git clone https://github.com/NeepOwO/torque-dash.git
 cd torque-dash
 npm install
 

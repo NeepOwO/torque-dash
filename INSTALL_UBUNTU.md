@@ -341,7 +341,7 @@ sudo nano /etc/systemd/system/torque-dash.service
 ```ini
 [Unit]
 Description=Torque Dash - OBD2 Dashboard
-Documentation=https://github.com/yourusername/torque-dash
+Documentation=https://github.com/NeepOwO/torque-dash
 After=network.target postgresql.service
 
 [Service]
@@ -807,8 +807,83 @@ sudo -u postgres psql torquedash < backup.sql
 - [USER_SETTINGS_GUIDE.md](USER_SETTINGS_GUIDE.md)
 
 **Проблемы?**
-- GitHub Issues: https://github.com/yourusername/torque-dash/issues
-- Email: support@example.com
+- GitHub Issues: https://github.com/NeepOwO/torque-dash/issues
+
+---
+
+## 📱 Настройка Torque Pro
+
+После установки сервера нужно настроить приложение Torque Pro на телефоне.
+
+### Автоматическое определение IP
+
+Запустите скрипт для автоматического определения IP адреса:
+
+```bash
+cd /root/torque-dash
+chmod +x scripts/show-server-url.sh
+./scripts/show-server-url.sh
+```
+
+Скрипт покажет:
+- 🌐 **Public IP** - для доступа из интернета (с мобильного интернета)
+- 🏠 **Local IP** - для доступа по WiFi
+- 📋 **Готовую строку** для вставки в Torque Pro
+
+### Ручное определение IP
+
+Если скрипт не работает, используйте команды:
+
+```bash
+# Публичный IP (для доступа из интернета)
+curl -4 ifconfig.me
+
+# Локальный IP (для доступа по WiFi)
+hostname -I | awk '{print $1}'
+```
+
+### Настройка в Torque Pro
+
+1. Откройте приложение **Torque Pro**
+2. Перейдите в **Settings** → **Data Logging & Upload**
+3. Настройте:
+
+   **Email Address:**
+   ```
+   ваш-email@example.com
+   ```
+   (Тот же email, что зарегистрировали на сервере)
+
+   **Webserver URL:**
+   ```
+   http://YOUR_SERVER_IP:3000/api/upload
+   ```
+   
+   **Примеры:**
+   - С локальной сети: `http://192.168.1.100:3000/api/upload`
+   - Из интернета: `http://45.123.67.89:3000/api/upload`
+   - С доменом: `http://yourdomain.com:3000/api/upload`
+   - С SSL: `https://yourdomain.com/api/upload` (если настроили Nginx)
+
+4. Нажмите **Test Settings** для проверки подключения
+
+### Проверка подключения
+
+```bash
+# Откройте логи в реальном времени
+sudo journalctl -u torque-dash -f
+
+# Запустите Torque Pro и начните поездку
+# В логах должны появиться сообщения о получении данных
+```
+
+Если видите сообщения типа:
+```
+[INFO] Receiving data from user: your-email@example.com
+[INFO] Session: abc123
+```
+
+✅ **Подключение работает!**
 
 ---
 

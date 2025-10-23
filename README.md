@@ -105,12 +105,45 @@ npm start
 
 To be able to log data from Torque Pro:
 
-1. Register an account in torqueDASH
-2. In Torque Pro settings set the user email address to the same as your accounts.
-3. In Torque Pro settings set the Webserver URL to the */api/upload* path
+1. Register an account in torqueDASH at `http://YOUR_SERVER_IP:3000`
+2. In Torque Pro app → Settings → Data Logging & Upload:
+   - **Email Address**: Set to your registered email
+   - **Webserver URL**: Set to your server upload endpoint:
+   ```
+   http://YOUR_SERVER_IP:3000/api/upload
+   ```
+   
+**📍 How to find YOUR_SERVER_IP:**
+
+<details>
+<summary>Click to expand IP detection methods</summary>
+
+**On Ubuntu Server:**
+```bash
+# Get public IP (if server is on the internet)
+curl -4 ifconfig.me
+
+# Or get local network IP
+hostname -I | awk '{print $1}'
+
+# Or use this command
+ip addr show | grep "inet " | grep -v "127.0.0.1" | awk '{print $2}' | cut -d/ -f1 | head -1
 ```
-https://yourappname.herokuapp.com/api/upload
+
+**On Windows:**
+```powershell
+# Get local IP
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike "*Loopback*"})[0].IPAddress
 ```
+
+**Example configurations:**
+- Local server: `http://192.168.1.100:3000/api/upload`
+- Public server: `http://your-domain.com:3000/api/upload` (если используете доменное имя)
+- With Nginx/SSL: `https://your-domain.com/api/upload` (without port if using reverse proxy)
+
+</details>
+
+After configuration, Torque Pro will automatically send data to your dashboard!
 
 <!-- Functionality -->
 ## Functionality
