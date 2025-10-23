@@ -1,8 +1,8 @@
-{{> sidebar}}
-
-<section class="container-fluid" style="margin-top: 20px;">
-    <div class="row">
-        <div class="col-12">
+<div class="container-fluid wrapper">
+    {{> sidebar}}
+    <div class="container-fluid p-3" id="content">
+        <div class="row">
+            <div class="col-12">
             <h2 class="mb-4"><i class="fas fa-cog mr-2"></i>Settings</h2>
             
             <!-- Live-Only Mode Section -->
@@ -112,7 +112,8 @@
             </div>
         </div>
     </div>
-</section>
+</div>
+</div>
 
 <script>
 $(document).ready(function() {
