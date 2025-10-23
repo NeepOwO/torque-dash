@@ -871,6 +871,15 @@ class IndicatorLight extends DashboardWidget {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         
+        // Apply rotation
+        this.withRotation(centerX, centerY, this.config.rotation, () => {
+            this.drawIndicator(centerX, centerY);
+        });
+        
+        this.drawForegroundImage();
+    }
+    
+    drawIndicator(centerX, centerY) {
         // Determine current color and visibility
         let currentColor = this.isOn ? this.config.onColor : this.config.offColor;
         let visible = true;
