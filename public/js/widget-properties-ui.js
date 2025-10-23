@@ -479,6 +479,110 @@ function createPropertiesPanel(widget) {
         </div>
         ` : ''}
 
+        ${widget.type === 'gps-map' ? `
+        <!-- GPS Map Settings -->
+        <hr>
+        <h6><i class="fas fa-map-marked-alt"></i> GPS Map Settings</h6>
+        
+        <div class="form-group">
+            <label>Map Style</label>
+            <select class="form-control form-control-sm" id="prop-map-style">
+                <option value="osm" ${!config.mapStyleName || config.mapStyleName === 'osm' ? 'selected' : ''}>OpenStreetMap</option>
+                <option value="satellite" ${config.mapStyleName === 'satellite' ? 'selected' : ''}>Satellite</option>
+                <option value="terrain" ${config.mapStyleName === 'terrain' ? 'selected' : ''}>Terrain</option>
+                <option value="dark" ${config.mapStyleName === 'dark' ? 'selected' : ''}>Dark Mode</option>
+                <option value="topo" ${config.mapStyleName === 'topo' ? 'selected' : ''}>Topographic</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Zoom Level</label>
+            <input type="range" class="custom-range" id="prop-map-zoom" min="1" max="19" value="${config.zoom || 15}">
+            <small class="text-muted">Level: <span id="map-zoom-value">${config.zoom || 15}</span></small>
+        </div>
+        
+        <hr>
+        <h6>Track Settings</h6>
+        
+        <div class="custom-control custom-checkbox mb-2">
+            <input type="checkbox" class="custom-control-input" id="prop-show-track" ${config.showTrack !== false ? 'checked' : ''}>
+            <label class="custom-control-label" for="prop-show-track">Show Track</label>
+        </div>
+        
+        <div class="form-group">
+            <label>Track Color</label>
+            <input type="color" class="form-control form-control-sm" id="prop-track-color" value="${config.trackColor || '#00ff00'}">
+        </div>
+        
+        <div class="form-group">
+            <label>Track Width</label>
+            <input type="range" class="custom-range" id="prop-track-width" min="1" max="10" value="${config.trackWidth || 3}">
+            <small class="text-muted">Width: <span id="track-width-value">${config.trackWidth || 3}</span>px</small>
+        </div>
+        
+        <div class="form-group">
+            <label>Max Track Points</label>
+            <input type="number" class="form-control form-control-sm" id="prop-max-track-points" min="100" max="10000" step="100" value="${config.maxTrackPoints || 1000}">
+            <small class="text-muted">Limit points for performance</small>
+        </div>
+        
+        <div class="custom-control custom-checkbox mb-2">
+            <input type="checkbox" class="custom-control-input" id="prop-speed-heatmap" ${config.speedHeatmap ? 'checked' : ''}>
+            <label class="custom-control-label" for="prop-speed-heatmap">Speed Heatmap</label>
+        </div>
+        
+        <hr>
+        <h6>Marker Settings</h6>
+        
+        <div class="custom-control custom-checkbox mb-2">
+            <input type="checkbox" class="custom-control-input" id="prop-show-marker" ${config.showMarker !== false ? 'checked' : ''}>
+            <label class="custom-control-label" for="prop-show-marker">Show Marker</label>
+        </div>
+        
+        <div class="form-group">
+            <label>Marker Color</label>
+            <input type="color" class="form-control form-control-sm" id="prop-marker-color" value="${config.markerColor || '#ff0000'}">
+        </div>
+        
+        <div class="custom-control custom-checkbox mb-2">
+            <input type="checkbox" class="custom-control-input" id="prop-show-speed" ${config.showSpeed !== false ? 'checked' : ''}>
+            <label class="custom-control-label" for="prop-show-speed">Show Speed Popup</label>
+        </div>
+        
+        <hr>
+        <h6>Playback Controls</h6>
+        
+        <div class="custom-control custom-checkbox mb-2">
+            <input type="checkbox" class="custom-control-input" id="prop-replay-mode" ${config.replayMode ? 'checked' : ''}>
+            <label class="custom-control-label" for="prop-replay-mode">Enable Replay Mode</label>
+        </div>
+        
+        <div id="replay-controls" style="display: ${config.replayMode ? 'block' : 'none'};">
+            <div class="form-group">
+                <label>Replay Speed</label>
+                <select class="form-control form-control-sm" id="prop-replay-speed">
+                    <option value="0.5" ${config.replaySpeed === 0.5 ? 'selected' : ''}>0.5x</option>
+                    <option value="1" ${config.replaySpeed === 1 || !config.replaySpeed ? 'selected' : ''}>1x</option>
+                    <option value="2" ${config.replaySpeed === 2 ? 'selected' : ''}>2x</option>
+                    <option value="5" ${config.replaySpeed === 5 ? 'selected' : ''}>5x</option>
+                    <option value="10" ${config.replaySpeed === 10 ? 'selected' : ''}>10x</option>
+                </select>
+            </div>
+            
+            <div class="btn-group btn-group-sm btn-block mb-2" role="group">
+                <button type="button" class="btn btn-outline-primary" id="replay-play-btn">
+                    <i class="fas fa-play"></i> Play
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="replay-pause-btn">
+                    <i class="fas fa-pause"></i> Pause
+                </button>
+                <button type="button" class="btn btn-outline-danger" id="replay-reset-btn">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+        ` : ''}
+
         <hr>
         <button type="button" class="btn btn-sm btn-danger btn-block" id="delete-widget-btn">
             <i class="fas fa-trash"></i> Delete Widget

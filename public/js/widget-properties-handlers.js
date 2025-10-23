@@ -398,6 +398,94 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
         editor.render();
     });
     
+    // GPS Map handlers
+    if (widget.type === 'gps-map') {
+        $('#prop-map-style').on('change', function() {
+            const styleName = $(this).val();
+            widget.instance.updateConfig({ mapStyleName: styleName });
+            widget.instance.updateMapStyle(styleName);
+        });
+        
+        $('#prop-map-zoom').on('input', function() {
+            const val = parseInt($(this).val());
+            $('#map-zoom-value').text(val);
+            widget.instance.updateConfig({ zoom: val });
+            if (widget.instance.map) {
+                widget.instance.map.setZoom(val);
+            }
+        });
+        
+        $('#prop-show-track').on('change', function() {
+            widget.instance.updateConfig({ showTrack: $(this).is(':checked') });
+            if (widget.instance.trackLine) {
+                widget.instance.trackLine.setStyle({ opacity: $(this).is(':checked') ? 1 : 0 });
+            }
+        });
+        
+        $('#prop-track-color').on('input', function() {
+            widget.instance.updateConfig({ trackColor: $(this).val() });
+            editor.render();
+        });
+        
+        $('#prop-track-width').on('input', function() {
+            const val = parseInt($(this).val());
+            $('#track-width-value').text(val);
+            widget.instance.updateConfig({ trackWidth: val });
+            editor.render();
+        });
+        
+        $('#prop-max-track-points').on('input', function() {
+            widget.instance.updateConfig({ maxTrackPoints: parseInt($(this).val()) });
+        });
+        
+        $('#prop-speed-heatmap').on('change', function() {
+            widget.instance.updateConfig({ speedHeatmap: $(this).is(':checked') });
+            widget.instance.toggleSpeedHeatmap($(this).is(':checked'));
+        });
+        
+        $('#prop-show-marker').on('change', function() {
+            widget.instance.updateConfig({ showMarker: $(this).is(':checked') });
+            if (widget.instance.marker) {
+                if ($(this).is(':checked')) {
+                    widget.instance.marker.addTo(widget.instance.map);
+                } else {
+                    widget.instance.marker.remove();
+                }
+            }
+        });
+        
+        $('#prop-marker-color').on('input', function() {
+            widget.instance.updateConfig({ markerColor: $(this).val() });
+            widget.instance.updateMarkerColor($(this).val());
+        });
+        
+        $('#prop-show-speed').on('change', function() {
+            widget.instance.updateConfig({ showSpeed: $(this).is(':checked') });
+        });
+        
+        $('#prop-replay-mode').on('change', function() {
+            const enabled = $(this).is(':checked');
+            widget.instance.updateConfig({ replayMode: enabled });
+            $('#replay-controls').toggle(enabled);
+        });
+        
+        $('#prop-replay-speed').on('change', function() {
+            widget.instance.updateConfig({ replaySpeed: parseFloat($(this).val()) });
+        });
+        
+        $('#replay-play-btn').on('click', function() {
+            widget.instance.startReplay();
+        });
+        
+        $('#replay-pause-btn').on('click', function() {
+            widget.instance.pauseReplay();
+        });
+        
+        $('#replay-reset-btn').on('click', function() {
+            widget.instance.resetReplay();
+        });
+    }
+    
     // Delete widget button
     $('#delete-widget-btn').on('click', function() {
         if (confirm('Are you sure you want to delete this widget?')) {

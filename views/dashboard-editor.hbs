@@ -285,11 +285,53 @@ $(document).ready(function() {
                 sessions.forEach(session => {
                     select.append(`<option value="${session.sessionId}">${session.name}</option>`);
                 });
+                
+                // Check for active session after loading all sessions
+                checkActiveSession();
+            }
+        });
+    }
+    
+    function checkActiveSession() {
+        $.ajax({
+            url: '/api/sessions/active',
+            method: 'GET',
+            success: function(response) {
+                if (response.active && response.session) {
+                    console.log('Active session detected:', response.session.name);
+                    
+                    // Select the active session in dropdown
+                    $('#sessionSelect').val(response.session.sessionId);
+                    
+                    // Auto-connect to live preview
+                    startLivePreview(response.session.sessionId);
+                    
+                    // Show notification
+                    const notification = $('<div class="alert alert-success alert-dismissible fade show position-fixed" style="top: 70px; right: 20px; z-index: 9999;">')
+                        .html(`<strong>Auto-connected!</strong> Receiving live data from: ${response.session.name}
+                               <button type="button" class="close" data-dismiss="alert">&times;</button>`);
+                    $('body').append(notification);
+                    setTimeout(() => notification.alert('close'), 5000);
+                    
+                    // Check periodically if session is still active
+                    setInterval(checkActiveSession, 30000);
+                } else {
+                    // Check again in 5 seconds if no active session
+                    setTimeout(checkActiveSession, 5000);
+                }
+            },
+            error: function(err) {
+                console.error('Failed to check active session:', err);
             }
         });
     }
 
     function startLivePreview(sessionId) {
+        // Disconnect previous session if any
+        if (liveSession) {
+            liveSession.disconnect();
+        }
+        
         // Connect WebSocket and update widgets in real-time
         const socket = io();
         socket.emit('join-session', sessionId);

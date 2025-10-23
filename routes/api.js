@@ -25,6 +25,7 @@ router.patch('/users/shareid', authenticate, UserController.toggleShareId);
 router.get('/users/settings', authenticate, UserController.getSettings);
 router.patch('/users/settings/live-mode', authenticate, UserController.toggleLiveOnlyMode);
 
+router.get('/sessions/active', authenticate, SessionController.getActiveSession);
 router.get('/sessions', authenticate, SessionController.getAll);
 router.get('/sessions/shared/:shareId', SessionController.getAllShared);
 router.get('/sessions/shared/:shareId/:sessionId', SessionController.getOneShared);

@@ -9,6 +9,43 @@ const shortid = require('shortid');
 const pidNames = require('../torquekeys');
 
 class SessionController {
+    // Get active session (most recent session with latestData)
+    static async getActiveSession(req, res) {
+        try {
+            // Find the most recent session with latestData
+            const session = await Session.findOne({
+                where: {
+                    userId: req.user.id,
+                    latestData: {
+                        [Op.ne]: null
+                    }
+                },
+                order: [['updatedAt', 'DESC']]
+            });
+            
+            if (!session) {
+                return res.json({ active: false, session: null });
+            }
+            
+            // Check if session is still active (updated within last 30 seconds)
+            const thirtySecondsAgo = new Date(Date.now() - 30000);
+            const isActive = new Date(session.updatedAt) > thirtySecondsAgo;
+            
+            res.json({
+                active: isActive,
+                session: isActive ? {
+                    id: session.id,
+                    sessionId: session.sessionId,
+                    name: session.name || session.sessionId,
+                    updatedAt: session.updatedAt
+                } : null
+            });
+        } catch (err) {
+            console.error('Error getting active session:', err);
+            res.status(500).json({ error: 'Failed to get active session' });
+        }
+    }
+    
     // Get available sensors from a session's latest log
     static async getAvailableSensors(req, res) {
         try {

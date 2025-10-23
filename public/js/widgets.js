@@ -1010,6 +1010,7 @@ class GPSMapWidget extends DashboardWidget {
         return {
             ...super.getDefaultConfig(),
             zoom: 15,
+            mapStyleName: 'osm',
             mapStyle: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             showTrack: true,
             trackColor: '#00ff00',
@@ -1018,6 +1019,9 @@ class GPSMapWidget extends DashboardWidget {
             markerColor: '#ff0000',
             showSpeed: true,
             maxTrackPoints: 1000,
+            speedHeatmap: false,
+            replayMode: false,
+            replaySpeed: 1,
             // GPS sensor keys
             latKey: 'kff1006',
             lonKey: 'kff1005',
@@ -1032,14 +1036,32 @@ class GPSMapWidget extends DashboardWidget {
         this.map = null;
         this.marker = null;
         this.trackLine = null;
+        this.heatmapLine = null;
         this.trackPoints = [];
+        this.trackData = []; // Stores {lat, lon, speed, time}
         this.initialized = false;
+        this.tileLayer = null;
         
         // GPS data
         this.currentLat = null;
         this.currentLon = null;
         this.currentSpeed = 0;
         this.currentBearing = 0;
+        
+        // Replay state
+        this.replayPlaying = false;
+        this.replayPaused = false;
+        this.replayIndex = 0;
+        this.replayTimer = null;
+        
+        // Map styles
+        this.mapStyles = {
+            'osm': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            'satellite': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            'terrain': 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+            'dark': 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            'topo': 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
+        };
     }
 
     initMap() {
@@ -1065,37 +1087,198 @@ class GPSMapWidget extends DashboardWidget {
             }).setView([0, 0], this.config.zoom);
             
             // Add tile layer
-            L.tileLayer(this.config.mapStyle, {
+            const styleUrl = this.mapStyles[this.config.mapStyleName] || this.config.mapStyle;
+            this.tileLayer = L.tileLayer(styleUrl, {
                 maxZoom: 19
             }).addTo(this.map);
             
             // Create marker
             if (this.config.showMarker) {
-                const markerIcon = L.divIcon({
-                    className: 'gps-marker',
-                    html: `<div style="background: ${this.config.markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
-                    iconSize: [20, 20],
-                    iconAnchor: [10, 10]
-                });
-                this.marker = L.marker([0, 0], { icon: markerIcon }).addTo(this.map);
-                
-                // Add speed popup
-                if (this.config.showSpeed) {
-                    this.marker.bindPopup('Speed: 0 km/h');
-                }
+                this.createMarker();
             }
             
             // Create track line
             if (this.config.showTrack) {
-                this.trackLine = L.polyline([], {
-                    color: this.config.trackColor,
-                    weight: this.config.trackWidth
-                }).addTo(this.map);
+                if (this.config.speedHeatmap) {
+                    this.createHeatmapTrack();
+                } else {
+                    this.trackLine = L.polyline([], {
+                        color: this.config.trackColor,
+                        weight: this.config.trackWidth
+                    }).addTo(this.map);
+                }
             }
             
             this.initialized = true;
         } catch (err) {
             console.error('Failed to initialize GPS map:', err);
+        }
+    }
+    
+    createMarker() {
+        const markerIcon = L.divIcon({
+            className: 'gps-marker',
+            html: `<div style="background: ${this.config.markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+        this.marker = L.marker([0, 0], { icon: markerIcon }).addTo(this.map);
+        
+        // Add speed popup
+        if (this.config.showSpeed) {
+            this.marker.bindPopup('Speed: 0 km/h');
+        }
+    }
+    
+    createHeatmapTrack() {
+        // Use polyline with color gradient based on speed
+        // This is a simplified heatmap - full implementation would use leaflet-heat plugin
+        this.heatmapLine = L.polyline([], {
+            weight: this.config.trackWidth,
+            smoothFactor: 1
+        }).addTo(this.map);
+    }
+    
+    updateMapStyle(styleName) {
+        if (!this.map || !this.tileLayer) return;
+        
+        const newUrl = this.mapStyles[styleName] || this.mapStyles['osm'];
+        this.tileLayer.setUrl(newUrl);
+        this.config.mapStyleName = styleName;
+    }
+    
+    updateMarkerColor(color) {
+        if (!this.marker) return;
+        
+        const markerIcon = L.divIcon({
+            className: 'gps-marker',
+            html: `<div style="background: ${color}; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+        this.marker.setIcon(markerIcon);
+    }
+    
+    toggleSpeedHeatmap(enabled) {
+        if (!this.map) return;
+        
+        if (enabled) {
+            // Remove regular track
+            if (this.trackLine) {
+                this.trackLine.remove();
+                this.trackLine = null;
+            }
+            // Create heatmap track
+            this.createHeatmapTrack();
+            this.redrawHeatmap();
+        } else {
+            // Remove heatmap
+            if (this.heatmapLine) {
+                this.heatmapLine.remove();
+                this.heatmapLine = null;
+            }
+            // Create regular track
+            this.trackLine = L.polyline(this.trackPoints, {
+                color: this.config.trackColor,
+                weight: this.config.trackWidth
+            }).addTo(this.map);
+        }
+    }
+    
+    redrawHeatmap() {
+        if (!this.heatmapLine || this.trackData.length === 0) return;
+        
+        // Create segments with colors based on speed
+        this.heatmapLine.setLatLngs([]);
+        
+        for (let i = 0; i < this.trackData.length - 1; i++) {
+            const point = this.trackData[i];
+            const nextPoint = this.trackData[i + 1];
+            const speed = point.speed || 0;
+            
+            // Color from green (slow) to red (fast)
+            const color = this.getSpeedColor(speed);
+            
+            L.polyline([[point.lat, point.lon], [nextPoint.lat, nextPoint.lon]], {
+                color: color,
+                weight: this.config.trackWidth,
+                opacity: 0.8
+            }).addTo(this.map);
+        }
+    }
+    
+    getSpeedColor(speed) {
+        // Convert speed to color gradient (0-200 km/h)
+        const ratio = Math.min(speed / 200, 1);
+        const hue = (1 - ratio) * 120; // 120 = green, 0 = red
+        return `hsl(${hue}, 100%, 50%)`;
+    }
+    
+    // Replay methods
+    startReplay() {
+        if (this.trackData.length === 0) {
+            alert('No track data to replay');
+            return;
+        }
+        
+        this.replayPlaying = true;
+        this.replayPaused = false;
+        
+        if (this.replayIndex >= this.trackData.length) {
+            this.replayIndex = 0;
+        }
+        
+        this.playReplayStep();
+    }
+    
+    playReplayStep() {
+        if (!this.replayPlaying || this.replayPaused) return;
+        
+        if (this.replayIndex >= this.trackData.length) {
+            this.replayPlaying = false;
+            return;
+        }
+        
+        const point = this.trackData[this.replayIndex];
+        
+        // Update marker position
+        if (this.marker) {
+            this.marker.setLatLng([point.lat, point.lon]);
+            if (this.config.showSpeed) {
+                this.marker.setPopupContent(`Speed: ${Math.round(point.speed || 0)} km/h`);
+            }
+        }
+        
+        // Center map on marker
+        this.map.setView([point.lat, point.lon], this.config.zoom);
+        
+        this.replayIndex++;
+        
+        // Schedule next step
+        const delay = this.config.replaySpeed ? 1000 / this.config.replaySpeed : 1000;
+        this.replayTimer = setTimeout(() => this.playReplayStep(), delay);
+    }
+    
+    pauseReplay() {
+        this.replayPaused = true;
+        if (this.replayTimer) {
+            clearTimeout(this.replayTimer);
+        }
+    }
+    
+    resetReplay() {
+        this.replayPlaying = false;
+        this.replayPaused = false;
+        this.replayIndex = 0;
+        if (this.replayTimer) {
+            clearTimeout(this.replayTimer);
+        }
+        
+        // Reset marker to first position
+        if (this.trackData.length > 0 && this.marker) {
+            const firstPoint = this.trackData[0];
+            this.marker.setLatLng([firstPoint.lat, firstPoint.lon]);
+            this.map.setView([firstPoint.lat, firstPoint.lon], this.config.zoom);
         }
     }
 
@@ -1119,6 +1302,21 @@ class GPSMapWidget extends DashboardWidget {
         this.currentLon = lon;
         this.currentSpeed = speed || 0;
         this.currentBearing = bearing || 0;
+        
+        // Store data for replay and heatmap
+        this.trackData.push({
+            lat: lat,
+            lon: lon,
+            speed: speed || 0,
+            bearing: bearing || 0,
+            time: Date.now()
+        });
+        
+        // Limit track data
+        if (this.trackData.length > this.config.maxTrackPoints) {
+            this.trackData.shift();
+        }
+        
         this.draw();
     }
 
@@ -1141,6 +1339,11 @@ class GPSMapWidget extends DashboardWidget {
             return;
         }
         
+        // Skip updates if in replay mode
+        if (this.config.replayMode && this.replayPlaying) {
+            return;
+        }
+        
         // Update marker position
         if (this.marker && this.config.showMarker) {
             this.marker.setLatLng([this.currentLat, this.currentLon]);
@@ -1159,7 +1362,7 @@ class GPSMapWidget extends DashboardWidget {
         }
         
         // Add point to track
-        if (this.config.showTrack && this.trackLine) {
+        if (this.config.showTrack) {
             this.trackPoints.push([this.currentLat, this.currentLon]);
             
             // Limit track points
@@ -1167,7 +1370,13 @@ class GPSMapWidget extends DashboardWidget {
                 this.trackPoints.shift();
             }
             
-            this.trackLine.setLatLngs(this.trackPoints);
+            if (this.config.speedHeatmap && this.trackData.length > 1) {
+                // Redraw heatmap
+                this.redrawHeatmap();
+            } else if (this.trackLine) {
+                // Update regular track
+                this.trackLine.setLatLngs(this.trackPoints);
+            }
         }
         
         // Center map on current position (only once or when requested)
