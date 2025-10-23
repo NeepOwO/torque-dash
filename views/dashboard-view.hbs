@@ -1,0 +1,184 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 bg-dark text-white py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <a href="/dashboards" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </a>
+                    <span class="mx-3" id="dashboardTitle">Dashboard View</span>
+                </div>
+                <div>
+                    <button id="fullscreenBtn" class="btn btn-sm btn-info">
+                        <i class="fas fa-expand"></i> Fullscreen
+                    </button>
+                    <a href="/dashboard/editor/{{dashboardId}}" class="btn btn-sm btn-warning">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12 text-center p-4" style="background: #2a2a2a;">
+            <div id="loading" class="text-white">
+                <div class="spinner-border" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+                <p class="mt-2">Loading dashboard...</p>
+            </div>
+            <canvas id="dashboardCanvas" style="display: none; box-shadow: 0 0 20px rgba(0,0,0,0.5);"></canvas>
+        </div>
+    </div>
+
+    <div class="row bg-dark text-white py-2">
+        <div class="col-md-6">
+            <label class="mr-2">Active Session:</label>
+            <select id="sessionSelect" class="form-control form-control-sm d-inline-block" style="width: auto;">
+                <option value="">Select session...</option>
+            </select>
+            <button id="connectBtn" class="btn btn-sm btn-success ml-2" disabled>
+                <i class="fas fa-play"></i> Connect
+            </button>
+        </div>
+        <div class="col-md-6 text-right">
+            <span id="connectionStatus" class="badge badge-secondary">Disconnected</span>
+        </div>
+    </div>
+</div>
+
+<script src="/js/lib/jquery-3.3.1.min.js"></script>
+<script src="/js/lib/bootstrap.bundle.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/widgets.js"></script>
+<script src="/js/dashboard-live.js"></script>
+
+<script>
+const dashboardId = '{{dashboardId}}';
+let viewer;
+let currentSession = null;
+
+$(document).ready(function() {
+    loadDashboard();
+    loadSessions();
+
+    $('#sessionSelect').change(function() {
+        const sessionId = $(this).val();
+        $('#connectBtn').prop('disabled', !sessionId);
+    });
+
+    $('#connectBtn').click(function() {
+        const sessionId = $('#sessionSelect').val();
+        if (sessionId) {
+            connectToSession(sessionId);
+        }
+    });
+
+    $('#fullscreenBtn').click(function() {
+        const canvas = document.getElementById('dashboardCanvas');
+        if (canvas.requestFullscreen) {
+            canvas.requestFullscreen();
+        } else if (canvas.webkitRequestFullscreen) {
+            canvas.webkitRequestFullscreen();
+        } else if (canvas.msRequestFullscreen) {
+            canvas.msRequestFullscreen();
+        }
+    });
+
+    async function loadDashboard() {
+        try {
+            const response = await fetch(`/api/dashboards/${dashboardId}`);
+            const dashboard = await response.json();
+
+            $('#dashboardTitle').text(dashboard.name);
+
+            const canvasConfig = dashboard.config?.settings || {
+                width: 1920,
+                height: 1080,
+                backgroundColor: '#1a1a1a'
+            };
+
+            viewer = new DashboardLiveViewer('dashboardCanvas', canvasConfig);
+            viewer.loadConfig(dashboard.config);
+            viewer.start();
+
+            $('#loading').hide();
+            $('#dashboardCanvas').show();
+
+            // Connect to active session if set
+            if (dashboard.activeSessionId) {
+                $('#sessionSelect').val(dashboard.activeSessionId);
+                connectToSession(dashboard.activeSessionId);
+            }
+        } catch (error) {
+            console.error('Failed to load dashboard:', error);
+            alert('Failed to load dashboard');
+        }
+    }
+
+    function loadSessions() {
+        $.ajax({
+            url: '/api/sessions',
+            method: 'GET',
+            success: function(sessions) {
+                const select = $('#sessionSelect');
+                sessions.forEach(session => {
+                    select.append(`<option value="${session.sessionId}">${session.name}</option>`);
+                });
+            }
+        });
+    }
+
+    function connectToSession(sessionId) {
+        if (currentSession) {
+            viewer.socket.disconnect();
+        }
+
+        viewer.connectWebSocket(sessionId, dashboardId);
+        currentSession = sessionId;
+
+        viewer.socket.on('connect', () => {
+            $('#connectionStatus').removeClass('badge-secondary badge-danger').addClass('badge-success').text('Connected');
+            $('#connectBtn').html('<i class="fas fa-stop"></i> Disconnect').removeClass('btn-success').addClass('btn-danger');
+            $('#connectBtn').off('click').click(disconnect);
+        });
+
+        viewer.socket.on('disconnect', () => {
+            $('#connectionStatus').removeClass('badge-success').addClass('badge-secondary').text('Disconnected');
+            $('#connectBtn').html('<i class="fas fa-play"></i> Connect').removeClass('btn-danger').addClass('btn-success');
+            $('#connectBtn').off('click').click(function() {
+                connectToSession($('#sessionSelect').val());
+            });
+        });
+
+        // Update dashboard's active session
+        $.ajax({
+            url: `/api/dashboards/${dashboardId}`,
+            method: 'PUT',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                activeSessionId: sessionId
+            })
+        });
+    }
+
+    function disconnect() {
+        if (viewer && viewer.socket) {
+            viewer.socket.disconnect();
+            currentSession = null;
+        }
+    }
+});
+</script>
+
+<style>
+body {
+    background: #2a2a2a;
+}
+
+#dashboardCanvas {
+    border: 2px solid #333;
+}
+</style>
+

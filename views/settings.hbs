@@ -1,0 +1,239 @@
+<section class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h2 class="mb-4"><i class="fas fa-cog mr-2"></i>Settings</h2>
+            
+            <!-- Live-Only Mode Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-broadcast-tower mr-2"></i>Live-Only Mode</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p class="mb-2">
+                                <strong>Current Status:</strong> 
+                                <span id="live-mode-status" class="badge badge-secondary">Loading...</span>
+                            </p>
+                            <p class="text-muted">
+                                When enabled, sensor data from Torque Pro will be streamed in real-time but NOT saved to the database. 
+                                This saves storage space while still allowing real-time dashboards.
+                            </p>
+                            
+                            <div class="alert alert-info" id="live-mode-info" style="display: none;">
+                                <i class="fas fa-info-circle mr-2"></i>
+                                <strong>How it works:</strong>
+                                <ul class="mb-0 mt-2">
+                                    <li>✅ Real-time data streaming (WebSocket)</li>
+                                    <li>✅ Dashboard updates work normally</li>
+                                    <li>✅ Session is created</li>
+                                    <li>❌ Sensor logs are NOT saved to database</li>
+                                    <li>❌ Cannot view historical data</li>
+                                    <li>⚠️ Last data kept in memory for 5 minutes only</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="alert alert-warning" id="global-mode-warning" style="display: none;">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Global Live-Only Mode is enabled by administrator.</strong>
+                                <br>All users are in live-only mode regardless of this setting.
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4 text-center">
+                            <div class="custom-control custom-switch" style="transform: scale(1.5); margin-top: 40px;">
+                                <input type="checkbox" class="custom-control-input" id="live-mode-toggle" disabled>
+                                <label class="custom-control-label" for="live-mode-toggle"></label>
+                            </div>
+                            <p class="mt-4">
+                                <button class="btn btn-primary" id="toggle-btn" disabled>
+                                    <i class="fas fa-sync-alt mr-2"></i>Toggle Live Mode
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- User Info Section -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user mr-2"></i>Account Information</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Email:</strong> <span id="user-email">{{userEmail}}</span></p>
+                    <p class="text-muted mb-0">
+                        Use this email in Torque Pro app to send data to this server.
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Instructions -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-question-circle mr-2"></i>Need Help?</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>To configure Torque Pro:</strong></p>
+                    <ol>
+                        <li>Open Torque Pro app</li>
+                        <li>Go to Settings → Data Logging & Upload</li>
+                        <li>Set <strong>Email Address</strong> to: <code>{{userEmail}}</code></li>
+                        <li>Set <strong>Webserver URL</strong> to your server address</li>
+                        <li>Enable <strong>Upload to Webserver</strong></li>
+                    </ol>
+                    <p class="mb-0">
+                        <a href="https://github.com/yourusername/torque-dash/blob/master/LIVE_ONLY_MODE.md" target="_blank">
+                            <i class="fas fa-book mr-1"></i>Read full documentation
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+$(document).ready(function() {
+    let currentSettings = {};
+    
+    // Load user settings
+    function loadSettings() {
+        $.ajax({
+            url: '/api/users/settings',
+            method: 'GET',
+            success: function(data) {
+                currentSettings = data;
+                updateUI();
+            },
+            error: function(xhr) {
+                console.error('Failed to load settings:', xhr);
+                alert('Failed to load settings. Please refresh the page.');
+            }
+        });
+    }
+    
+    // Update UI based on current settings
+    function updateUI() {
+        const isEnabled = currentSettings.liveOnlyMode;
+        
+        // Update status badge
+        if (isEnabled) {
+            $('#live-mode-status')
+                .removeClass('badge-secondary badge-success')
+                .addClass('badge-warning')
+                .html('<i class="fas fa-broadcast-tower mr-1"></i>ENABLED (No logs saved)');
+            $('#live-mode-info').show();
+        } else {
+            $('#live-mode-status')
+                .removeClass('badge-secondary badge-warning')
+                .addClass('badge-success')
+                .html('<i class="fas fa-database mr-1"></i>DISABLED (Normal mode)');
+            $('#live-mode-info').hide();
+        }
+        
+        // Update toggle switch
+        $('#live-mode-toggle').prop('checked', isEnabled);
+        
+        // Enable controls
+        $('#live-mode-toggle').prop('disabled', false);
+        $('#toggle-btn').prop('disabled', false);
+    }
+    
+    // Toggle live-only mode
+    function toggleLiveMode() {
+        const btn = $('#toggle-btn');
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Updating...');
+        
+        $.ajax({
+            url: '/api/users/settings/live-mode',
+            method: 'PATCH',
+            success: function(response) {
+                if (response.success) {
+                    currentSettings.liveOnlyMode = response.liveOnlyMode;
+                    updateUI();
+                    
+                    // Show notification
+                    const message = response.message || (response.liveOnlyMode ? 
+                        'Live-only mode enabled. Sensor logs will NOT be saved.' : 
+                        'Normal mode enabled. Sensor logs will be saved.');
+                    
+                    const alertClass = response.liveOnlyMode ? 'alert-warning' : 'alert-success';
+                    const alertHtml = `
+                        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
+                            <strong>Success!</strong> ${message}
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    `;
+                    $('.container-fluid').prepend(alertHtml);
+                    
+                    // Auto-dismiss after 5 seconds
+                    setTimeout(() => {
+                        $('.alert').fadeOut(function() { $(this).remove(); });
+                    }, 5000);
+                } else {
+                    alert('Failed to update setting: ' + (response.error || 'Unknown error'));
+                }
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i>Toggle Live Mode');
+            },
+            error: function(xhr) {
+                console.error('Failed to toggle live mode:', xhr);
+                alert('Failed to update setting. Please try again.');
+                btn.prop('disabled', false).html('<i class="fas fa-sync-alt mr-2"></i>Toggle Live Mode');
+            }
+        });
+    }
+    
+    // Event handlers
+    $('#toggle-btn').click(toggleLiveMode);
+    $('#live-mode-toggle').change(function() {
+        if ($(this).prop('checked') !== currentSettings.liveOnlyMode) {
+            toggleLiveMode();
+        }
+    });
+    
+    // Initial load
+    loadSettings();
+});
+</script>
+
+<style>
+.custom-switch {
+    padding-left: 4rem;
+}
+
+.custom-switch .custom-control-label::before {
+    width: 3.5rem;
+    height: 2rem;
+    border-radius: 1rem;
+}
+
+.custom-switch .custom-control-label::after {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 1rem;
+    top: calc(0.125rem + 2px);
+}
+
+.custom-switch .custom-control-input:checked ~ .custom-control-label::after {
+    transform: translateX(1.5rem);
+}
+
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    font-weight: 500;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #e83e8c;
+}
+</style>
+

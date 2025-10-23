@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: transparent;
+        }
+
+        #dashboardCanvas {
+            display: block;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff4444;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff0000;
+            z-index: 1000;
+            opacity: 0.7;
+        }
+
+        .status-indicator.connected {
+            background: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div>Loading Dashboard...</div>
+        <div class="loading-spinner"></div>
+    </div>
+    
+    <div id="error" class="error" style="display: none;"></div>
+    
+    <div class="status-indicator" id="statusIndicator"></div>
+    
+    <canvas id="dashboardCanvas"></canvas>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/widgets.js"></script>
+    <script src="/js/dashboard-live.js"></script>
+
+    <script>
+        const shareId = '{{shareId}}';
+        let viewer;
+        let dashboard;
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        async function init() {
+            try {
+                // Load dashboard configuration
+                const response = await fetch(`/api/dashboards/shared/${shareId}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load dashboard');
+                }
+
+                dashboard = await response.json();
+                
+                // Initialize viewer
+                const canvasConfig = dashboard.config?.settings || {
+                    width: 1920,
+                    height: 1080,
+                    backgroundColor: '#1a1a1a'
+                };
+
+                viewer = new DashboardLiveViewer('dashboardCanvas', canvasConfig);
+                viewer.loadConfig(dashboard.config);
+
+                // Connect to WebSocket
+                if (dashboard.activeSessionId) {
+                    viewer.connectWebSocket(dashboard.activeSessionId, dashboard.id);
+                    updateStatusIndicator(true);
+                }
+
+                // Start rendering
+                viewer.start();
+
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+
+                // Monitor connection status
+                if (viewer.socket) {
+                    viewer.socket.on('connect', () => {
+                        console.log('Connected to server');
+                        updateStatusIndicator(true);
+                        reconnectAttempts = 0;
+                    });
+
+                    viewer.socket.on('disconnect', () => {
+                        console.log('Disconnected from server');
+                        updateStatusIndicator(false);
+                        
+                        // Attempt reconnection
+                        if (reconnectAttempts < maxReconnectAttempts) {
+                            reconnectAttempts++;
+                            setTimeout(() => {
+                                console.log(`Reconnection attempt ${reconnectAttempts}...`);
+                            }, 2000 * reconnectAttempts);
+                        }
+                    });
+
+                    viewer.socket.on('connect_error', (error) => {
+                        console.error('Connection error:', error);
+                        updateStatusIndicator(false);
+                    });
+                }
+
+            } catch (error) {
+                console.error('Initialization error:', error);
+                showError('Failed to load dashboard: ' + error.message);
+            }
+        }
+
+        function updateStatusIndicator(connected) {
+            const indicator = document.getElementById('statusIndicator');
+            if (connected) {
+                indicator.classList.add('connected');
+            } else {
+                indicator.classList.remove('connected');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Handle page visibility for performance
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                console.log('Page hidden - maintaining connection');
+            } else {
+                console.log('Page visible - resuming');
+                if (viewer) {
+                    viewer.render();
+                }
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (viewer) {
+                viewer.destroy();
+            }
+        });
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+
+        // Auto-reload configuration every 5 minutes
+        setInterval(async () => {
+            try {
+                const response = await fetch(`/api/dashboards/shared/${shareId}`);
+                if (response.ok) {
+                    const newDashboard = await response.json();
+                    // Check if config changed
+                    if (JSON.stringify(newDashboard.config) !== JSON.stringify(dashboard.config)) {
+                        console.log('Dashboard config updated, reloading...');
+                        dashboard = newDashboard;
+                        viewer.loadConfig(dashboard.config);
+                    }
+                    
+                    // Check if session changed
+                    if (newDashboard.activeSessionId !== dashboard.activeSessionId) {
+                        console.log('Active session changed, reconnecting...');
+                        if (viewer.socket) {
+                            viewer.socket.disconnect();
+                        }
+                        viewer.connectWebSocket(newDashboard.activeSessionId, dashboard.id);
+                        dashboard.activeSessionId = newDashboard.activeSessionId;
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to reload dashboard config:', error);
+            }
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
+
