@@ -117,14 +117,28 @@ fi
 
 # Клонирование с GitHub
 cd $REAL_HOME
+
+# Очистка git credential cache (на всякий случай)
+sudo -u $REAL_USER git config --global --unset credential.helper 2>/dev/null || true
+
 info "Клонирование с https://github.com/NeepOwO/torque-dash.git"
-sudo -u $REAL_USER git clone https://github.com/NeepOwO/torque-dash.git || {
-    warn "Git clone не удался. Проверьте:"
-    warn "1. Репозиторий публичный?"
-    warn "2. URL правильный?"
-    warn "Можете скачать ZIP: https://github.com/NeepOwO/torque-dash/archive/refs/heads/master.zip"
-    exit 1
-}
+if sudo -u $REAL_USER git clone https://github.com/NeepOwO/torque-dash.git; then
+    info "✅ Клонирование успешно"
+else
+    warn "Git clone не удался. Пробуем альтернативный способ (ZIP)..."
+    
+    # Альтернативный способ: скачать ZIP архив
+    info "Скачивание ZIP архива..."
+    sudo -u $REAL_USER wget -O torque-dash.zip https://github.com/NeepOwO/torque-dash/archive/refs/heads/master.zip || {
+        error "Не удалось скачать проект. Проверьте интернет-соединение."
+    }
+    
+    info "Распаковка архива..."
+    sudo -u $REAL_USER unzip -q torque-dash.zip
+    sudo -u $REAL_USER mv torque-dash-master torque-dash
+    sudo -u $REAL_USER rm torque-dash.zip
+    info "✅ Загрузка через ZIP успешна"
+fi
 
 cd $INSTALL_DIR
 
