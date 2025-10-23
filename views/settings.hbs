@@ -72,19 +72,37 @@
             <!-- Instructions -->
             <div class="card">
                 <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="fas fa-question-circle mr-2"></i>Need Help?</h5>
+                    <h5 class="mb-0"><i class="fas fa-mobile-alt mr-2"></i>Configure Torque Pro App</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>To configure Torque Pro:</strong></p>
+                    <p><strong>Follow these steps:</strong></p>
                     <ol>
-                        <li>Open Torque Pro app</li>
-                        <li>Go to Settings → Data Logging & Upload</li>
-                        <li>Set <strong>Email Address</strong> to: <code>{{userEmail}}</code></li>
-                        <li>Set <strong>Webserver URL</strong> to your server address</li>
+                        <li>Open <strong>Torque Pro</strong> app on your phone</li>
+                        <li>Go to <strong>Settings → Data Logging & Upload</strong></li>
+                        <li>Set <strong>Email Address</strong> to: <code id="user-email-display">{{userEmail}}</code>
+                            <button class="btn btn-sm btn-outline-secondary ml-2" onclick="copyToClipboard('{{userEmail}}', 'Email copied!')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </li>
+                        <li>Set <strong>Webserver URL</strong> to:
+                            <div class="alert alert-success mt-2 mb-2" style="font-family: monospace; word-break: break-all;">
+                                <strong id="server-url">Loading...</strong>
+                                <button class="btn btn-sm btn-success ml-2" onclick="copyServerUrl()">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                            </div>
+                        </li>
                         <li>Enable <strong>Upload to Webserver</strong></li>
+                        <li>Optionally, enable <strong>Always send GPS values</strong> for GPS Map widget</li>
                     </ol>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <strong>Tip:</strong> Use the <i class="fas fa-copy"></i> button to copy the URL and paste it directly into Torque Pro!
+                    </div>
+                    
                     <p class="mb-0">
-                        <a href="https://github.com/yourusername/torque-dash/blob/master/LIVE_ONLY_MODE.md" target="_blank">
+                        <a href="https://github.com/NeepOwO/torque-dash/blob/master/README.md" target="_blank">
                             <i class="fas fa-book mr-1"></i>Read full documentation
                         </a>
                     </p>
@@ -212,7 +230,65 @@ $(document).ready(function() {
     
     // Initial load
     loadSettings();
+    
+    // Auto-detect and display server URL
+    detectServerUrl();
 });
+
+// Detect server URL
+function detectServerUrl() {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port || (protocol === 'https:' ? '443' : '80');
+    
+    let serverUrl;
+    if (port === '80' || port === '443') {
+        serverUrl = `${protocol}//${hostname}/api/upload`;
+    } else {
+        serverUrl = `${protocol}//${hostname}:${port}/api/upload`;
+    }
+    
+    $('#server-url').text(serverUrl);
+}
+
+// Copy server URL to clipboard
+function copyServerUrl() {
+    const serverUrl = $('#server-url').text();
+    copyToClipboard(serverUrl, 'Server URL copied! Paste it into Torque Pro.');
+}
+
+// Generic copy to clipboard function
+function copyToClipboard(text, successMessage) {
+    // Create temporary textarea
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    
+    // Select and copy
+    textarea.select();
+    textarea.setSelectionRange(0, 99999); // For mobile
+    
+    try {
+        document.execCommand('copy');
+        
+        // Show success message
+        const originalBtn = event.target.closest('button');
+        const originalHtml = originalBtn.innerHTML;
+        originalBtn.innerHTML = '<i class="fas fa-check"></i> ' + (successMessage || 'Copied!');
+        originalBtn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            originalBtn.innerHTML = originalHtml;
+            originalBtn.classList.remove('btn-success');
+        }, 2000);
+    } catch (err) {
+        alert('Failed to copy. Please copy manually: ' + text);
+    }
+    
+    document.body.removeChild(textarea);
+}
 </script>
 
 <style>
