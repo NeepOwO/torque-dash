@@ -333,129 +333,162 @@ class CircularGauge extends DashboardWidget {
         const centerY = this.canvas.height / 2;
         const radius = Math.min(centerX, centerY) * 0.8;
         
-        // Draw gauge arc
-        this.drawArc(centerX, centerY, radius);
+        // Apply rotation to entire widget
+        this.withRotation(centerX, centerY, this.config.rotation, () => {
+            // Draw gauge arc
+            this.drawArc(centerX, centerY, radius);
+            
+            // Draw ticks and numbers
+            if (this.config.showTicks || this.config.showNumbers) {
+                this.drawTicks(centerX, centerY, radius);
+            }
+            
+            // Draw needle
+            this.drawNeedle(centerX, centerY, radius);
+            
+            // Draw center value
+            if (this.config.showValue) {
+                this.drawValue(centerX, centerY, radius);
+            }
+            
+            // Draw label
+            if (this.config.showLabel) {
+                this.drawLabel(centerX, this.canvas.height - 20);
+            }
+        });
         
-        // Draw ticks and numbers
-        if (this.config.showTicks) {
-            this.drawTicks(centerX, centerY, radius);
-        }
-        
-        // Draw needle
-        this.drawNeedle(centerX, centerY, radius);
-        
-        // Draw center value
-        if (this.config.showValue) {
-            this.drawValue(centerX, centerY);
-        }
-        
-        // Draw label
-        if (this.config.showLabel) {
-            this.drawLabel(centerX, this.canvas.height - 20);
-        }
+        this.drawForegroundImage();
     }
 
     drawArc(centerX, centerY, radius) {
-        const startAngle = (this.config.startAngle - 90) * Math.PI / 180;
-        const endAngle = (this.config.endAngle - 90) * Math.PI / 180;
+        const startAngleRad = this.degToRad(this.config.startAngle - 90);
+        const endAngleRad = this.degToRad(this.config.endAngle - 90);
+        const angleRange = endAngleRad - startAngleRad;
+        
+        // Draw colored zones if enabled (background)
+        if (this.config.useZones && this.config.zones && this.config.zones.length > 0) {
+            const valueRange = this.config.maxValue - this.config.minValue;
+            this.config.zones.forEach(zone => {
+                const zoneStartRatio = (zone.from - this.config.minValue) / valueRange;
+                const zoneEndRatio = (zone.to - this.config.minValue) / valueRange;
+                const zoneStartAngle = startAngleRad + angleRange * zoneStartRatio;
+                const zoneEndAngle = startAngleRad + angleRange * zoneEndRatio;
+                
+                this.ctx.strokeStyle = zone.color;
+                this.ctx.lineWidth = 15;
+                this.ctx.globalAlpha = 0.3;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, radius, zoneStartAngle, zoneEndAngle);
+                this.ctx.stroke();
+            });
+            this.ctx.globalAlpha = 1.0;
+        }
         
         // Background arc
         this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        this.ctx.arc(centerX, centerY, radius, startAngleRad, endAngleRad);
         this.ctx.lineWidth = 15;
         this.ctx.strokeStyle = this.config.secondaryColor;
+        this.ctx.globalAlpha = 0.3;
         this.ctx.stroke();
+        this.ctx.globalAlpha = 1.0;
         
-        // Value arc with gradient
-        const valueAngle = startAngle + (endAngle - startAngle) * 
-            ((this.value - this.config.minValue) / (this.config.maxValue - this.config.minValue));
+        // Value arc - use color zones if enabled
+        const valueRatio = (this.value - this.config.minValue) / (this.config.maxValue - this.config.minValue);
+        const valueAngle = startAngleRad + angleRange * valueRatio;
         
-        let arcColor = this.config.primaryColor;
-        if (this.config.dangerThreshold && this.value >= this.config.dangerThreshold) {
-            arcColor = this.config.dangerColor;
-        } else if (this.config.warningThreshold && this.value >= this.config.warningThreshold) {
-            arcColor = this.config.warningColor;
-        }
+        const arcColor = this.getColorForValue(this.value);
         
         this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, radius, startAngle, valueAngle);
+        this.ctx.arc(centerX, centerY, radius, startAngleRad, valueAngle);
         this.ctx.lineWidth = 15;
         this.ctx.strokeStyle = arcColor;
         this.ctx.stroke();
     }
 
     drawTicks(centerX, centerY, radius) {
-        const startAngle = this.config.startAngle;
-        const endAngle = this.config.endAngle;
+        const startAngle = this.config.startAngle - 90;
+        const endAngle = this.config.endAngle - 90;
         const angleRange = endAngle - startAngle;
+        const tickCount = this.config.tickCount;
         
-        for (let i = 0; i <= this.config.tickCount; i++) {
-            const angle = (startAngle + (angleRange * i / this.config.tickCount) - 90) * Math.PI / 180;
-            const tickLength = i % 2 === 0 ? 15 : 10;
+        for (let i = 0; i <= tickCount; i++) {
+            const angleRad = this.degToRad(startAngle + (angleRange * i / tickCount));
+            const isMajor = (i % this.config.majorTickInterval === 0);
+            const tickLen = isMajor ? this.config.tickLength * 1.5 : this.config.tickLength;
             
-            const x1 = centerX + Math.cos(angle) * (radius - 20);
-            const y1 = centerY + Math.sin(angle) * (radius - 20);
-            const x2 = centerX + Math.cos(angle) * (radius - 20 - tickLength);
-            const y2 = centerY + Math.sin(angle) * (radius - 20 - tickLength);
-            
-            this.ctx.beginPath();
-            this.ctx.moveTo(x1, y1);
-            this.ctx.lineTo(x2, y2);
-            this.ctx.strokeStyle = this.config.textColor;
-            this.ctx.lineWidth = 2;
-            this.ctx.stroke();
+            // Draw tick
+            if (this.config.showTicks) {
+                const x1 = centerX + Math.cos(angleRad) * (radius - 20);
+                const y1 = centerY + Math.sin(angleRad) * (radius - 20);
+                const x2 = centerX + Math.cos(angleRad) * (radius - 20 - tickLen);
+                const y2 = centerY + Math.sin(angleRad) * (radius - 20 - tickLen);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(x1, y1);
+                this.ctx.lineTo(x2, y2);
+                this.ctx.strokeStyle = this.config.textColor;
+                this.ctx.lineWidth = isMajor ? 2 : 1;
+                this.ctx.stroke();
+            }
             
             // Draw numbers
-            if (this.config.showNumbers && i % 2 === 0) {
-                const value = this.config.minValue + (this.config.maxValue - this.config.minValue) * i / this.config.tickCount;
-                const textX = centerX + Math.cos(angle) * (radius - 40);
-                const textY = centerY + Math.sin(angle) * (radius - 40);
+            if (this.config.showNumbers && isMajor) {
+                const value = this.config.minValue + (this.config.maxValue - this.config.minValue) * (i / tickCount);
+                const textRadius = radius - 20 - this.config.tickLength * 2;
+                const textX = centerX + Math.cos(angleRad) * textRadius;
+                const textY = centerY + Math.sin(angleRad) * textRadius;
                 
                 this.ctx.fillStyle = this.config.textColor;
                 this.ctx.font = `${this.config.fontSize}px Arial`;
                 this.ctx.textAlign = 'center';
                 this.ctx.textBaseline = 'middle';
-                this.ctx.fillText(Math.round(value), textX, textY);
+                this.ctx.fillText(this.formatValue(value), textX, textY);
             }
         }
     }
 
     drawNeedle(centerX, centerY, radius) {
-        const startAngle = this.config.startAngle;
-        const endAngle = this.config.endAngle;
+        const startAngle = this.config.startAngle - 90;
+        const endAngle = this.config.endAngle - 90;
         const angleRange = endAngle - startAngle;
         const valueRatio = (this.value - this.config.minValue) / (this.config.maxValue - this.config.minValue);
-        const angle = (startAngle + angleRange * valueRatio - 90) * Math.PI / 180;
+        const angleRad = this.degToRad(startAngle + angleRange * valueRatio);
         
-        const needleLength = radius * 0.7;
-        const needleX = centerX + Math.cos(angle) * needleLength;
-        const needleY = centerY + Math.sin(angle) * needleLength;
+        const needleLen = radius * this.config.needleLength;
+        const needleX = centerX + Math.cos(angleRad) * needleLen;
+        const needleY = centerY + Math.sin(angleRad) * needleLen;
+        
+        const color = this.config.needleColor || this.getColorForValue(this.value);
         
         // Needle
         this.ctx.beginPath();
         this.ctx.moveTo(centerX, centerY);
         this.ctx.lineTo(needleX, needleY);
-        this.ctx.strokeStyle = this.config.needleColor;
-        this.ctx.lineWidth = 3;
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = this.config.needleWidth;
         this.ctx.stroke();
         
         // Center circle
         this.ctx.beginPath();
         this.ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
-        this.ctx.fillStyle = this.config.needleColor;
+        this.ctx.fillStyle = color;
         this.ctx.fill();
     }
 
-    drawValue(centerX, centerY) {
+    drawValue(centerX, centerY, radius) {
+        const valuePos = this.getValuePosition(centerX, centerY, radius);
+        
         this.ctx.fillStyle = this.config.textColor;
-        this.ctx.font = `bold ${this.config.fontSize * 1.5}px Arial`;
+        this.ctx.font = `bold ${this.config.valueSize}px Arial`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(
-            `${this.value.toFixed(1)} ${this.config.unit}`,
-            centerX,
-            centerY + 30
-        );
+        this.ctx.fillText(this.formatValue(this.value), valuePos.x, valuePos.y);
+        
+        if (this.config.showUnit && this.config.unit) {
+            this.ctx.font = `${this.config.unitSize}px Arial`;
+            this.ctx.fillText(this.config.unit, valuePos.x, valuePos.y + this.config.valueSize);
+        }
     }
 
     drawLabel(centerX, y) {
@@ -480,11 +513,19 @@ class LinearGauge extends DashboardWidget {
     draw() {
         this.clear();
         
-        if (this.config.orientation === 'horizontal') {
-            this.drawHorizontal();
-        } else {
-            this.drawVertical();
-        }
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        // Apply rotation
+        this.withRotation(centerX, centerY, this.config.rotation, () => {
+            if (this.config.orientation === 'horizontal') {
+                this.drawHorizontal();
+            } else {
+                this.drawVertical();
+            }
+        });
+        
+        this.drawForegroundImage();
     }
 
     drawHorizontal() {
@@ -497,7 +538,21 @@ class LinearGauge extends DashboardWidget {
         this.ctx.fillStyle = this.config.secondaryColor;
         this.ctx.fillRect(padding, barY, barWidth, this.config.barHeight);
         
+        // Draw zones if enabled
+        if (this.config.useZones && this.config.zones && this.config.zones.length > 0) {
+            const valueRange = this.config.maxValue - this.config.minValue;
+            this.config.zones.forEach(zone => {
+                const zoneStartPos = (zone.from - this.config.minValue) / valueRange * barWidth;
+                const zoneEndPos = (zone.to - this.config.minValue) / valueRange * barWidth;
+                this.ctx.fillStyle = zone.color;
+                this.ctx.globalAlpha = 0.3;
+                this.ctx.fillRect(padding + zoneStartPos, barY, zoneEndPos - zoneStartPos, this.config.barHeight);
+            });
+            this.ctx.globalAlpha = 1.0;
+        }
+        
         // Value bar
+        const color = this.getColorForValue(this.value);
         if (this.config.showGradient) {
             const gradient = this.ctx.createLinearGradient(padding, 0, padding + barWidth, 0);
             this.config.gradientColors.forEach((color, i) => {
@@ -505,7 +560,7 @@ class LinearGauge extends DashboardWidget {
             });
             this.ctx.fillStyle = gradient;
         } else {
-            this.ctx.fillStyle = this.config.primaryColor;
+            this.ctx.fillStyle = color;
         }
         this.ctx.fillRect(padding, barY, valueWidth, this.config.barHeight);
         
@@ -516,15 +571,16 @@ class LinearGauge extends DashboardWidget {
         
         // Value text
         if (this.config.showValue) {
+            const valuePos = this.getValuePosition(this.canvas.width / 2, barY + this.config.barHeight / 2, 0);
             this.ctx.fillStyle = this.config.textColor;
-            this.ctx.font = `bold ${this.config.fontSize * 1.2}px Arial`;
+            this.ctx.font = `bold ${this.config.valueSize}px Arial`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(
-                `${this.value.toFixed(1)} ${this.config.unit}`,
-                this.canvas.width / 2,
-                barY + this.config.barHeight / 2
-            );
+            this.ctx.fillText(this.formatValue(this.value), valuePos.x, valuePos.y);
+            if (this.config.showUnit && this.config.unit) {
+                this.ctx.font = `${this.config.unitSize}px Arial`;
+                this.ctx.fillText(this.config.unit, valuePos.x + this.ctx.measureText(this.formatValue(this.value)).width / 2 + 10, valuePos.y);
+            }
         }
         
         // Label
@@ -546,7 +602,21 @@ class LinearGauge extends DashboardWidget {
         this.ctx.fillStyle = this.config.secondaryColor;
         this.ctx.fillRect(barX, padding * 2, this.config.barHeight, barHeight);
         
+        // Draw zones if enabled
+        if (this.config.useZones && this.config.zones && this.config.zones.length > 0) {
+            const valueRange = this.config.maxValue - this.config.minValue;
+            this.config.zones.forEach(zone => {
+                const zoneStartPos = (zone.from - this.config.minValue) / valueRange * barHeight;
+                const zoneEndPos = (zone.to - this.config.minValue) / valueRange * barHeight;
+                this.ctx.fillStyle = zone.color;
+                this.ctx.globalAlpha = 0.3;
+                this.ctx.fillRect(barX, padding * 2 + barHeight - zoneEndPos, this.config.barHeight, zoneEndPos - zoneStartPos);
+            });
+            this.ctx.globalAlpha = 1.0;
+        }
+        
         // Value bar
+        const color = this.getColorForValue(this.value);
         if (this.config.showGradient) {
             const gradient = this.ctx.createLinearGradient(0, padding * 2 + barHeight, 0, padding * 2);
             this.config.gradientColors.forEach((color, i) => {
@@ -554,7 +624,7 @@ class LinearGauge extends DashboardWidget {
             });
             this.ctx.fillStyle = gradient;
         } else {
-            this.ctx.fillStyle = this.config.primaryColor;
+            this.ctx.fillStyle = color;
         }
         this.ctx.fillRect(barX, padding * 2 + barHeight - valueHeight, this.config.barHeight, valueHeight);
         
@@ -565,21 +635,16 @@ class LinearGauge extends DashboardWidget {
         
         // Value text
         if (this.config.showValue) {
+            const valuePos = this.getValuePosition(this.canvas.width / 2, padding * 2 + barHeight + 20, 0);
             this.ctx.fillStyle = this.config.textColor;
-            this.ctx.font = `bold ${this.config.fontSize * 1.2}px Arial`;
+            this.ctx.font = `bold ${this.config.valueSize}px Arial`;
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'top';
-            this.ctx.fillText(
-                `${this.value.toFixed(1)}`,
-                this.canvas.width / 2,
-                padding * 2 + barHeight + 5
-            );
-            this.ctx.font = `${this.config.fontSize}px Arial`;
-            this.ctx.fillText(
-                this.config.unit,
-                this.canvas.width / 2,
-                padding * 2 + barHeight + 25
-            );
+            this.ctx.fillText(this.formatValue(this.value), valuePos.x, valuePos.y);
+            if (this.config.showUnit && this.config.unit) {
+                this.ctx.font = `${this.config.unitSize}px Arial`;
+                this.ctx.fillText(this.config.unit, valuePos.x, valuePos.y + this.config.valueSize);
+            }
         }
         
         // Label
@@ -598,6 +663,7 @@ class DigitalDisplay extends DashboardWidget {
             ...super.getDefaultConfig(),
             decimals: 1,
             fontSize: 48,
+            valueSize: 48,
             glowEffect: true,
             glowColor: '#00ff00'
         };
@@ -609,6 +675,15 @@ class DigitalDisplay extends DashboardWidget {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         
+        // Apply rotation
+        this.withRotation(centerX, centerY, this.config.rotation, () => {
+            this.drawDisplay(centerX, centerY);
+        });
+        
+        this.drawForegroundImage();
+    }
+    
+    drawDisplay(centerX, centerY) {
         // Glow effect
         if (this.config.glowEffect) {
             this.ctx.shadowBlur = 20;
@@ -616,36 +691,30 @@ class DigitalDisplay extends DashboardWidget {
         }
         
         // Value
-        this.ctx.fillStyle = this.config.primaryColor;
-        this.ctx.font = `bold ${this.config.fontSize}px 'Courier New', monospace`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(
-            this.value.toFixed(this.config.decimals),
-            centerX,
-            centerY
-        );
+        if (this.config.showValue) {
+            const color = this.getColorForValue(this.value);
+            this.ctx.fillStyle = color;
+            this.ctx.font = `bold ${this.config.valueSize}px 'Courier New', monospace`;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(this.formatValue(this.value), centerX, centerY);
+        }
         
         // Reset shadow
         this.ctx.shadowBlur = 0;
         
         // Unit
-        this.ctx.fillStyle = this.config.textColor;
-        this.ctx.font = `${this.config.fontSize * 0.4}px Arial`;
-        this.ctx.fillText(
-            this.config.unit,
-            centerX,
-            centerY + this.config.fontSize * 0.6
-        );
+        if (this.config.showUnit && this.config.unit) {
+            this.ctx.fillStyle = this.config.textColor;
+            this.ctx.font = `${this.config.unitSize}px Arial`;
+            this.ctx.fillText(this.config.unit, centerX, centerY + this.config.valueSize * 0.6);
+        }
         
         // Label
         if (this.config.showLabel) {
-            this.ctx.font = `${this.config.fontSize * 0.3}px Arial`;
-            this.ctx.fillText(
-                this.config.label,
-                centerX,
-                centerY - this.config.fontSize * 0.7
-            );
+            this.ctx.fillStyle = this.config.textColor;
+            this.ctx.font = `${this.config.fontSize}px Arial`;
+            this.ctx.fillText(this.config.label, centerX, centerY - this.config.valueSize * 0.7);
         }
     }
 }

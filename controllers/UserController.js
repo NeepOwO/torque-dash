@@ -116,11 +116,13 @@ class UserController {
         try {
             let user = await User.findOne({
                 where: { id: req.user.id },
-                attributes: ['id', 'email', 'liveOnlyMode']
+                attributes: ['id', 'email', 'liveOnlyMode', 'role']
             });
             res.json({
                 email: user.email,
-                liveOnlyMode: user.liveOnlyMode || false
+                liveOnlyMode: user.liveOnlyMode || false,
+                role: user.role || 'user',
+                isAdmin: user.role === 'admin'
             });
         } catch(err) {
             console.log(err);
