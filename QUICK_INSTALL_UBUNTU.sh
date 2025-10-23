@@ -115,11 +115,14 @@ if [ -d "$INSTALL_DIR" ]; then
     fi
 fi
 
-# Клонирование (замените на свой репозиторий!)
+# Клонирование с GitHub
 cd $REAL_HOME
-sudo -u $REAL_USER git clone https://github.com/yourusername/torque-dash.git || {
-    warn "Git clone не удался. Используйте ручную установку."
-    warn "Скачайте проект и поместите в $INSTALL_DIR"
+info "Клонирование с https://github.com/NeepOwO/torque-dash.git"
+sudo -u $REAL_USER git clone https://github.com/NeepOwO/torque-dash.git || {
+    warn "Git clone не удался. Проверьте:"
+    warn "1. Репозиторий публичный?"
+    warn "2. URL правильный?"
+    warn "Можете скачать ZIP: https://github.com/NeepOwO/torque-dash/archive/refs/heads/master.zip"
     exit 1
 }
 
