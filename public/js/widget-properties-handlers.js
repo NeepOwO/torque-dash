@@ -9,6 +9,56 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
         widget.sensorKey = $(this).val();
     });
     
+    // Load sensors from active session
+    $('#load-sensors-btn').on('click', function() {
+        const sessionId = $('#sessionSelect').val();
+        if (!sessionId) {
+            alert('Please select a session from the left panel first');
+            return;
+        }
+        
+        $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        
+        $.ajax({
+            url: `/api/sessions/${sessionId}/sensors`,
+            method: 'GET',
+            success: function(response) {
+                const select = $('#prop-sensor');
+                const currentValue = select.val();
+                
+                // Clear existing options (except the first one)
+                select.find('option:not(:first)').remove();
+                
+                // Add sensors from session
+                if (response.sensors && response.sensors.length > 0) {
+                    response.sensors.forEach(sensor => {
+                        const option = $('<option>')
+                            .val(sensor.key)
+                            .text(`${sensor.name} (${sensor.key})`)
+                            .data('current-value', sensor.value);
+                        select.append(option);
+                    });
+                    
+                    // Restore previous selection if it exists
+                    if (currentValue && select.find(`option[value="${currentValue}"]`).length > 0) {
+                        select.val(currentValue);
+                    }
+                    
+                    alert(`Loaded ${response.sensors.length} sensors from session`);
+                } else {
+                    alert('No sensors found in this session');
+                }
+            },
+            error: function(err) {
+                console.error('Failed to load sensors:', err);
+                alert('Failed to load sensors from session');
+            },
+            complete: function() {
+                $('#load-sensors-btn').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+            }
+        });
+    });
+    
     // General tab handlers
     $('#prop-label').on('input', function() {
         widget.instance.updateConfig({ label: $(this).val() });

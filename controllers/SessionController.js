@@ -6,8 +6,53 @@ const Op = require('../models').Sequelize.Op;
 const moment = require('moment');
 require('moment-duration-format');
 const shortid = require('shortid');
+const pidNames = require('../torquekeys');
 
 class SessionController {
+    // Get available sensors from a session's latest log
+    static async getAvailableSensors(req, res) {
+        try {
+            const sessionId = req.params.sessionId;
+            
+            // Get latest log from session
+            const log = await Log.findOne({
+                include: [{
+                    model: Session,
+                    where: { 
+                        id: sessionId,
+                        userId: req.user.id 
+                    }
+                }],
+                order: [['timestamp', 'DESC']]
+            });
+            
+            if (!log) {
+                return res.json({ sensors: [] });
+            }
+            
+            // Get all sensor keys from values
+            const values = log.getDataValue('values'); // Get raw values without conversion
+            const sensors = [];
+            
+            for (const key in values) {
+                if (values.hasOwnProperty(key)) {
+                    sensors.push({
+                        key: key,
+                        name: pidNames[key] || key,
+                        value: values[key]
+                    });
+                }
+            }
+            
+            // Sort by name
+            sensors.sort((a, b) => a.name.localeCompare(b.name));
+            
+            res.json({ sensors });
+        } catch (err) {
+            console.error('Error getting available sensors:', err);
+            res.status(500).json({ error: 'Failed to get sensors' });
+        }
+    }
     static async delete(req, res) {
         try{
             let userId = req.user.id;

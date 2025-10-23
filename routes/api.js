@@ -29,6 +29,7 @@ router.get('/sessions', authenticate, SessionController.getAll);
 router.get('/sessions/shared/:shareId', SessionController.getAllShared);
 router.get('/sessions/shared/:shareId/:sessionId', SessionController.getOneShared);
 router.get('/sessions/:sessionId', authenticate, SessionController.getOne);
+router.get('/sessions/:sessionId/sensors', authenticate, SessionController.getAvailableSensors);
 router.delete('/sessions/:sessionId', authenticate, SessionController.delete);
 
 router.patch('/sessions/rename/:sessionId', authenticate, SessionController.rename);
