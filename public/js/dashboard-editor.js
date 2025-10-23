@@ -571,6 +571,7 @@ class DashboardEditor {
                     y: widgetData.y,
                     width: widgetData.width,
                     height: widgetData.height,
+                    rotation: widgetData.rotation || 0,
                     sensorKey: widgetData.sensorKey,
                     config: widgetData.config
                 };
