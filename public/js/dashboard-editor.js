@@ -11,7 +11,11 @@ class DashboardEditor {
         this.selectedWidget = null;
         this.dragging = false;
         this.resizing = false;
+        this.rotating = false;
+        this.resizeHandle = null; // 'nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'
         this.dragOffset = { x: 0, y: 0 };
+        this.rotateStartAngle = 0;
+        this.rotateCenter = { x: 0, y: 0 };
         
         this.config = {
             gridSize: 20,
@@ -49,6 +53,28 @@ class DashboardEditor {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
+        // Check if clicking on selected widget's handles
+        if (this.selectedWidget) {
+            const handle = this.getHandleAtPoint(x, y, this.selectedWidget);
+            
+            if (handle === 'rotate') {
+                this.rotating = true;
+                const cx = this.selectedWidget.x + this.selectedWidget.width / 2;
+                const cy = this.selectedWidget.y + this.selectedWidget.height / 2;
+                this.rotateCenter = { x: cx, y: cy };
+                this.rotateStartAngle = Math.atan2(y - cy, x - cx) - (this.selectedWidget.rotation || 0) * Math.PI / 180;
+                return;
+            } else if (handle) {
+                this.resizing = true;
+                this.resizeHandle = handle;
+                this.dragOffset = {
+                    x: x - this.selectedWidget.x,
+                    y: y - this.selectedWidget.y
+                };
+                return;
+            }
+        }
+        
         // Check if clicking on a widget
         for (let i = this.widgets.length - 1; i >= 0; i--) {
             const widget = this.widgets[i];
@@ -74,7 +100,21 @@ class DashboardEditor {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         
-        if (this.dragging && this.selectedWidget) {
+        if (this.rotating && this.selectedWidget) {
+            const angle = Math.atan2(y - this.rotateCenter.y, x - this.rotateCenter.x);
+            let rotation = (angle - this.rotateStartAngle) * 180 / Math.PI;
+            
+            // Snap to 15 degree increments if shift is held
+            if (e.shiftKey) {
+                rotation = Math.round(rotation / 15) * 15;
+            }
+            
+            this.selectedWidget.rotation = rotation % 360;
+            this.render();
+        } else if (this.resizing && this.selectedWidget) {
+            this.handleResize(x, y);
+            this.render();
+        } else if (this.dragging && this.selectedWidget) {
             let newX = x - this.dragOffset.x;
             let newY = y - this.dragOffset.y;
             
@@ -90,20 +130,28 @@ class DashboardEditor {
             this.render();
         } else {
             // Update cursor based on hover
-            let hovering = false;
-            for (let i = this.widgets.length - 1; i >= 0; i--) {
-                if (this.isPointInWidget(x, y, this.widgets[i])) {
-                    hovering = true;
-                    break;
+            if (this.selectedWidget) {
+                const handle = this.getHandleAtPoint(x, y, this.selectedWidget);
+                this.canvas.style.cursor = this.getCursorForHandle(handle);
+            } else {
+                let hovering = false;
+                for (let i = this.widgets.length - 1; i >= 0; i--) {
+                    if (this.isPointInWidget(x, y, this.widgets[i])) {
+                        hovering = true;
+                        break;
+                    }
                 }
+                this.canvas.style.cursor = hovering ? 'move' : 'default';
             }
-            this.canvas.style.cursor = hovering ? 'move' : 'default';
         }
     }
 
     handleMouseUp(e) {
         this.dragging = false;
         this.resizing = false;
+        this.rotating = false;
+        this.resizeHandle = null;
+        this.canvas.style.cursor = 'default';
     }
 
     handleDoubleClick(e) {
@@ -124,6 +172,95 @@ class DashboardEditor {
     isPointInWidget(x, y, widget) {
         return x >= widget.x && x <= widget.x + widget.width &&
                y >= widget.y && y <= widget.y + widget.height;
+    }
+    
+    getHandleAtPoint(x, y, widget) {
+        const handleSize = 10;
+        const rotateHandleDistance = 30;
+        const wx = widget.x;
+        const wy = widget.y;
+        const ww = widget.width;
+        const wh = widget.height;
+        
+        // Rotate handle (top center, above widget)
+        const rotateCx = wx + ww / 2;
+        const rotateCy = wy - rotateHandleDistance;
+        if (Math.abs(x - rotateCx) < handleSize && Math.abs(y - rotateCy) < handleSize) {
+            return 'rotate';
+        }
+        
+        // Corner handles
+        if (Math.abs(x - wx) < handleSize && Math.abs(y - wy) < handleSize) return 'nw';
+        if (Math.abs(x - (wx + ww)) < handleSize && Math.abs(y - wy) < handleSize) return 'ne';
+        if (Math.abs(x - wx) < handleSize && Math.abs(y - (wy + wh)) < handleSize) return 'sw';
+        if (Math.abs(x - (wx + ww)) < handleSize && Math.abs(y - (wy + wh)) < handleSize) return 'se';
+        
+        // Edge handles
+        if (Math.abs(x - (wx + ww / 2)) < handleSize && Math.abs(y - wy) < handleSize) return 'n';
+        if (Math.abs(x - (wx + ww / 2)) < handleSize && Math.abs(y - (wy + wh)) < handleSize) return 's';
+        if (Math.abs(x - wx) < handleSize && Math.abs(y - (wy + wh / 2)) < handleSize) return 'w';
+        if (Math.abs(x - (wx + ww)) < handleSize && Math.abs(y - (wy + wh / 2)) < handleSize) return 'e';
+        
+        return null;
+    }
+    
+    handleResize(x, y) {
+        const widget = this.selectedWidget;
+        if (!widget || !this.resizeHandle) return;
+        
+        const handle = this.resizeHandle;
+        const minSize = 50;
+        
+        if (handle.includes('e')) {
+            const newWidth = Math.max(minSize, x - widget.x);
+            widget.width = newWidth;
+            if (widget.canvas) widget.canvas.width = newWidth;
+        }
+        if (handle.includes('w')) {
+            const newWidth = Math.max(minSize, widget.x + widget.width - x);
+            if (newWidth >= minSize) {
+                widget.x = x;
+                widget.width = newWidth;
+                if (widget.canvas) widget.canvas.width = newWidth;
+            }
+        }
+        if (handle.includes('s')) {
+            const newHeight = Math.max(minSize, y - widget.y);
+            widget.height = newHeight;
+            if (widget.canvas) widget.canvas.height = newHeight;
+        }
+        if (handle.includes('n')) {
+            const newHeight = Math.max(minSize, widget.y + widget.height - y);
+            if (newHeight >= minSize) {
+                widget.y = y;
+                widget.height = newHeight;
+                if (widget.canvas) widget.canvas.height = newHeight;
+            }
+        }
+        
+        // Recreate widget instance with new canvas size
+        if (widget.instance) {
+            widget.instance.destroy();
+        }
+        widget.instance = this.createWidgetInstance(widget);
+    }
+    
+    getCursorForHandle(handle) {
+        if (!handle) return 'default';
+        if (handle === 'rotate') return 'grab';
+        
+        const cursors = {
+            'n': 'ns-resize',
+            's': 'ns-resize',
+            'e': 'ew-resize',
+            'w': 'ew-resize',
+            'nw': 'nwse-resize',
+            'se': 'nwse-resize',
+            'ne': 'nesw-resize',
+            'sw': 'nesw-resize'
+        };
+        
+        return cursors[handle] || 'default';
     }
 
     addWidget(type, config = {}) {
@@ -243,7 +380,19 @@ class DashboardEditor {
         this.widgets.forEach(widget => {
             if (widget.instance) {
                 widget.instance.draw();
-                this.ctx.drawImage(widget.canvas, widget.x, widget.y);
+                
+                // Apply rotation if set
+                if (widget.rotation) {
+                    this.ctx.save();
+                    const cx = widget.x + widget.width / 2;
+                    const cy = widget.y + widget.height / 2;
+                    this.ctx.translate(cx, cy);
+                    this.ctx.rotate(widget.rotation * Math.PI / 180);
+                    this.ctx.drawImage(widget.canvas, -widget.width / 2, -widget.height / 2);
+                    this.ctx.restore();
+                } else {
+                    this.ctx.drawImage(widget.canvas, widget.x, widget.y);
+                }
             }
             
             // Draw selection border
@@ -282,13 +431,50 @@ class DashboardEditor {
     }
 
     drawResizeHandles(widget) {
-        const handleSize = 8;
-        const handles = [
-            { x: widget.x + widget.width, y: widget.y + widget.height } // Bottom-right
+        const handleSize = 10;
+        const wx = widget.x;
+        const wy = widget.y;
+        const ww = widget.width;
+        const wh = widget.height;
+        
+        // Corner handles (larger, white with blue border)
+        const corners = [
+            { x: wx, y: wy },                    // nw
+            { x: wx + ww, y: wy },               // ne
+            { x: wx, y: wy + wh },               // sw
+            { x: wx + ww, y: wy + wh }           // se
         ];
         
-        this.ctx.fillStyle = '#00aaff';
-        handles.forEach(handle => {
+        // Edge handles (smaller, blue)
+        const edges = [
+            { x: wx + ww / 2, y: wy },           // n
+            { x: wx + ww / 2, y: wy + wh },      // s
+            { x: wx, y: wy + wh / 2 },           // w
+            { x: wx + ww, y: wy + wh / 2 }       // e
+        ];
+        
+        // Draw corner handles
+        corners.forEach(handle => {
+            this.ctx.fillStyle = 'white';
+            this.ctx.fillRect(
+                handle.x - handleSize / 2,
+                handle.y - handleSize / 2,
+                handleSize,
+                handleSize
+            );
+            this.ctx.strokeStyle = '#00aaff';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(
+                handle.x - handleSize / 2,
+                handle.y - handleSize / 2,
+                handleSize,
+                handleSize
+            );
+        });
+        
+        // Draw edge handles
+        edges.forEach(handle => {
+            this.ctx.fillStyle = '#00aaff';
             this.ctx.fillRect(
                 handle.x - handleSize / 2,
                 handle.y - handleSize / 2,
@@ -296,6 +482,45 @@ class DashboardEditor {
                 handleSize
             );
         });
+        
+        // Draw rotate handle (circle above center top)
+        const rotateHandleDistance = 30;
+        const rotateCx = wx + ww / 2;
+        const rotateCy = wy - rotateHandleDistance;
+        
+        // Draw line from widget to rotate handle
+        this.ctx.strokeStyle = '#00aaff';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([3, 3]);
+        this.ctx.beginPath();
+        this.ctx.moveTo(wx + ww / 2, wy);
+        this.ctx.lineTo(rotateCx, rotateCy);
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);
+        
+        // Draw rotate handle circle
+        this.ctx.fillStyle = '#00ff00';
+        this.ctx.beginPath();
+        this.ctx.arc(rotateCx, rotateCy, handleSize / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.strokeStyle = 'white';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+        
+        // Draw rotation icon
+        this.ctx.strokeStyle = 'white';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.beginPath();
+        this.ctx.arc(rotateCx, rotateCy, 3, 0, Math.PI * 1.5);
+        this.ctx.stroke();
+        
+        // Display current rotation angle
+        if (widget.rotation) {
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(Math.round(widget.rotation) + '°', rotateCx, rotateCy - 15);
+        }
     }
 
     showWidgetProperties(widget) {
@@ -316,6 +541,7 @@ class DashboardEditor {
                 y: w.y,
                 width: w.width,
                 height: w.height,
+                rotation: w.rotation || 0,
                 sensorKey: w.sensorKey,
                 config: w.instance ? w.instance.config : {}
             }))

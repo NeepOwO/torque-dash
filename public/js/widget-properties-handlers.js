@@ -310,7 +310,37 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
         widget.instance.updateConfig({ animationEasing: $(this).val() });
     });
     
-    // Needle handlers
+    // Needle image toggle
+    $('#prop-needle-use-image').on('change', function() {
+        const useImage = $(this).is(':checked');
+        $('#needle-image-section').toggle(useImage);
+        $('#needle-standard-section').toggle(!useImage);
+        if (!useImage) {
+            widget.instance.updateConfig({ needleImageUrl: null });
+            editor.render();
+        }
+    });
+    
+    // Needle image handlers
+    $('#prop-needle-image').on('input', function() {
+        widget.instance.updateConfig({ needleImageUrl: $(this).val() });
+        widget.instance.loadNeedleImage();
+        editor.render();
+    });
+    
+    $('#prop-needle-image-scale').on('input', function() {
+        const val = parseFloat($(this).val());
+        $('#needle-image-scale-value').text(val.toFixed(1));
+        widget.instance.updateConfig({ needleImageScale: val });
+        editor.render();
+    });
+    
+    $('#prop-needle-rotation-offset').on('input', function() {
+        widget.instance.updateConfig({ needleRotationOffset: parseInt($(this).val()) });
+        editor.render();
+    });
+    
+    // Needle standard handlers
     $('#prop-needle-length').on('input', function() {
         const val = parseFloat($(this).val());
         $('#needle-length-value').text(val);

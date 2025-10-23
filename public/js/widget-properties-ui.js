@@ -364,18 +364,60 @@ function createPropertiesPanel(widget) {
         <!-- Needle Settings -->
         <hr>
         <h6><i class="fas fa-location-arrow"></i> Needle</h6>
-        <div class="row">
-            <div class="col-6">
-                <div class="form-group">
-                    <label>Length</label>
-                    <input type="range" class="custom-range" id="prop-needle-length" min="0.1" max="1" step="0.05" value="${config.needleLength || 0.7}">
-                    <small class="text-muted"><span id="needle-length-value">${config.needleLength || 0.7}</span></small>
+        
+        <div class="custom-control custom-checkbox mb-3">
+            <input type="checkbox" class="custom-control-input" id="prop-needle-use-image" ${config.needleImageUrl ? 'checked' : ''}>
+            <label class="custom-control-label" for="prop-needle-use-image">Use Custom Needle Image</label>
+        </div>
+        
+        <div id="needle-image-section" style="display: ${config.needleImageUrl ? 'block' : 'none'};">
+            <div class="form-group">
+                <label>Needle Image URL</label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control" id="prop-needle-image" placeholder="URL or path" value="${config.needleImageUrl || ''}">
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="button" onclick="uploadImage('needle')">
+                            <i class="fas fa-upload"></i>
+                        </button>
+                        <button class="btn btn-outline-info" type="button" onclick="browseImages('needle')">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                    </div>
+                </div>
+                <small class="text-muted">Upload PNG with transparency</small>
+            </div>
+            
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label>Scale</label>
+                        <input type="range" class="custom-range" id="prop-needle-image-scale" min="0.1" max="3" step="0.1" value="${config.needleImageScale || 1}">
+                        <small class="text-muted"><span id="needle-image-scale-value">${config.needleImageScale || 1}</span></small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-group">
+                        <label>Rotation Offset</label>
+                        <input type="number" class="form-control form-control-sm" id="prop-needle-rotation-offset" min="-180" max="180" value="${config.needleRotationOffset || 0}">
+                    </div>
                 </div>
             </div>
-            <div class="col-6">
-                <div class="form-group">
-                    <label>Width</label>
-                    <input type="number" class="form-control form-control-sm" id="prop-needle-width" min="1" max="20" value="${config.needleWidth || 3}">
+        </div>
+        
+        <div id="needle-standard-section" style="display: ${config.needleImageUrl ? 'none' : 'block'};">
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-group">
+                        <label>Length</label>
+                        <input type="range" class="custom-range" id="prop-needle-length" min="0.1" max="1" step="0.05" value="${config.needleLength || 0.7}">
+                        <small class="text-muted"><span id="needle-length-value">${config.needleLength || 0.7}</span></small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-group">
+                        <label>Width</label>
+                        <input type="number" class="form-control form-control-sm" id="prop-needle-width" min="1" max="20" value="${config.needleWidth || 3}">
+                    </div>
                 </div>
             </div>
         </div>
