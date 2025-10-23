@@ -48,6 +48,25 @@ function createPropertiesPanel(widget) {
         <hr>
 
         <!-- Tabs Navigation -->
+        <style>
+            #propTabs .nav-link {
+                color: #495057 !important;
+                background-color: white !important;
+                border: 1px solid #dee2e6 !important;
+                padding: 0.5rem 0.75rem !important;
+                font-size: 0.875rem !important;
+            }
+            #propTabs .nav-link:hover {
+                color: #007bff !important;
+                background-color: #f8f9fa !important;
+            }
+            #propTabs .nav-link.active {
+                color: #fff !important;
+                background-color: #007bff !important;
+                border-color: #007bff !important;
+                font-weight: bold !important;
+            }
+        </style>
         <ul class="nav nav-tabs nav-fill small" id="propTabs" role="tablist">
             <li class="nav-item">
                 <a class="nav-link active" id="tab-general" data-toggle="tab" href="#pane-general">General</a>

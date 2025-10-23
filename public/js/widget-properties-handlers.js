@@ -12,12 +12,33 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
     // Load sensors from active session
     $('#load-sensors-btn').on('click', function() {
         const sessionId = $('#sessionSelect').val();
+        
+        // Try to find active session if none selected
         if (!sessionId) {
-            alert('Please select a session from the left panel first');
+            // Check if there's a live session with data
+            $.ajax({
+                url: '/api/sessions/active',
+                method: 'GET',
+                success: function(activeResponse) {
+                    if (activeResponse.active && activeResponse.session) {
+                        // Use active session
+                        loadSensorsFromSession(activeResponse.session.id);
+                    } else {
+                        alert('Please start Torque Pro and begin a session first, or select a session from the list');
+                    }
+                },
+                error: function() {
+                    alert('Please select a session from the left panel first');
+                }
+            });
             return;
         }
         
-        $(this).prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        loadSensorsFromSession(sessionId);
+    });
+    
+    function loadSensorsFromSession(sessionId) {
+        $('#load-sensors-btn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
         
         $.ajax({
             url: `/api/sessions/${sessionId}/sensors`,
@@ -44,20 +65,39 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
                         select.val(currentValue);
                     }
                     
-                    alert(`Loaded ${response.sensors.length} sensors from session`);
+                    // Show success without alert (less intrusive)
+                    $('#load-sensors-btn').html('<i class="fas fa-check"></i>');
+                    setTimeout(function() {
+                        $('#load-sensors-btn').html('<i class="fas fa-sync-alt"></i>');
+                    }, 2000);
+                    
+                    console.log(`✓ Loaded ${response.sensors.length} sensors from session`);
                 } else {
-                    alert('No sensors found in this session');
+                    alert('No sensors found in this session. Start Torque Pro and begin driving.');
                 }
             },
             error: function(err) {
                 console.error('Failed to load sensors:', err);
-                alert('Failed to load sensors from session');
+                let errorMsg = 'Failed to load sensors. ';
+                
+                if (err.status === 404) {
+                    errorMsg += 'Session not found or has no data yet.';
+                } else if (err.status === 403) {
+                    errorMsg += 'Access denied to this session.';
+                } else {
+                    errorMsg += 'Make sure Torque Pro is sending data.';
+                }
+                
+                alert(errorMsg);
             },
             complete: function() {
-                $('#load-sensors-btn').prop('disabled', false).html('<i class="fas fa-sync-alt"></i>');
+                $('#load-sensors-btn').prop('disabled', false);
+                if ($('#load-sensors-btn i').hasClass('fa-spinner')) {
+                    $('#load-sensors-btn').html('<i class="fas fa-sync-alt"></i>');
+                }
             }
         });
-    });
+    }
     
     // General tab handlers
     $('#prop-label').on('input', function() {
