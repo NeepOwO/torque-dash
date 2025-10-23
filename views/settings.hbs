@@ -116,6 +116,16 @@
 </div>
 
 <script>
+// Wait for jQuery to load
+(function() {
+    function initSettings() {
+        if (typeof $ === 'undefined') {
+            setTimeout(initSettings, 50);
+            return;
+        }
+        
+        console.log('jQuery loaded, initializing settings...');
+        
 $(document).ready(function() {
     let currentSettings = {};
     
@@ -314,6 +324,10 @@ function copyToClipboard(text, successMessage) {
     
     document.body.removeChild(textarea);
 }
+
+    }
+    initSettings();
+})();
 </script>
 
 <style>
