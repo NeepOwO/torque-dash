@@ -234,10 +234,8 @@ $(document).ready(function() {
     // Initial load
     loadSettings();
     
-    // Auto-detect and display server URL
-    setTimeout(function() {
-        detectServerUrl();
-    }, 100);
+    // Auto-detect and display server URL - run after DOM is ready
+    detectServerUrl();
 });
 
 // Detect server URL
@@ -254,12 +252,27 @@ function detectServerUrl() {
         serverUrl = `${protocol}//${hostname}:${port}/api/upload`;
     }
     
-    console.log('Detected server URL:', serverUrl);
+    console.log('Server URL detection:', {
+        protocol: protocol,
+        hostname: hostname,
+        port: port,
+        serverUrl: serverUrl
+    });
+    
     const element = document.getElementById('server-url');
     if (element) {
         element.textContent = serverUrl;
+        console.log('✓ Server URL updated successfully');
     } else {
-        console.error('Element #server-url not found!');
+        console.error('✗ Element #server-url not found!');
+        // Try jQuery as fallback
+        const jqElement = $('#server-url');
+        if (jqElement.length > 0) {
+            jqElement.text(serverUrl);
+            console.log('✓ Server URL updated via jQuery');
+        } else {
+            console.error('✗ Element not found even with jQuery!');
+        }
     }
 }
 

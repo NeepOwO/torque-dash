@@ -60,7 +60,6 @@ class PageController {
     
     static async renderSettings(req, res) {
         res.render('settings', {
-            dashboard: true,
             settings: true,
             userEmail: req.user.email,
             loggedIn: true
@@ -70,7 +69,6 @@ class PageController {
     // Dashboard pages
     static async renderDashboards(req, res) {
         res.render('dashboards', {
-            dashboard: true,
             dashboards: true,
             userEmail: req.user.email,
             loggedIn: true
