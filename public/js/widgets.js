@@ -105,15 +105,43 @@ class DashboardWidget {
         // Load background image
         if (this.config.backgroundImageUrl) {
             this.backgroundImage = new Image();
-            this.backgroundImage.onload = () => this.draw();
+            this.backgroundImage.crossOrigin = 'anonymous';
+            this.backgroundImage.onload = () => {
+                console.log('Background image loaded:', this.config.backgroundImageUrl);
+                this.draw();
+            };
+            this.backgroundImage.onerror = (e) => {
+                console.error('Failed to load background image:', this.config.backgroundImageUrl);
+            };
             this.backgroundImage.src = this.config.backgroundImageUrl;
         }
         
         // Load foreground image
         if (this.config.foregroundImageUrl) {
             this.foregroundImage = new Image();
-            this.foregroundImage.onload = () => this.draw();
+            this.foregroundImage.crossOrigin = 'anonymous';
+            this.foregroundImage.onload = () => {
+                console.log('Foreground image loaded:', this.config.foregroundImageUrl);
+                this.draw();
+            };
+            this.foregroundImage.onerror = (e) => {
+                console.error('Failed to load foreground image:', this.config.foregroundImageUrl);
+            };
             this.foregroundImage.src = this.config.foregroundImageUrl;
+        }
+        
+        // Load needle image
+        if (this.config.needleImageUrl) {
+            this.needleImage = new Image();
+            this.needleImage.crossOrigin = 'anonymous';
+            this.needleImage.onload = () => {
+                console.log('Needle image loaded:', this.config.needleImageUrl);
+                this.draw();
+            };
+            this.needleImage.onerror = (e) => {
+                console.error('Failed to load needle image:', this.config.needleImageUrl);
+            };
+            this.needleImage.src = this.config.needleImageUrl;
         }
     }
 
