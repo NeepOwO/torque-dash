@@ -29,7 +29,7 @@
     </div>
     <div class="p-2 d-flex align-items-center">
         <!-- Auto-connect status indicator -->
-        <div id="autoConnectStatus" class="mr-3 d-none" style="background: rgba(40, 167, 69, 0.2); padding: 4px 12px; border-radius: 4px; border: 1px solid #28a745;">
+        <div id="autoConnectStatus" class="mr-3 d-none" style="background: rgba(40, 167, 69, 0.2); padding: 4px 12px; border-radius: 4px; border: 1px solid #28a745; opacity: 0; transition: opacity 0.3s ease; will-change: opacity;">
             <i class="fas fa-plug text-success mr-1"></i>
             <span class="text-success" style="font-size: 13px; font-weight: 500;">
                 <span id="autoConnectText">Connected</span>
@@ -698,15 +698,20 @@ $(document).ready(function() {
                 if (response.active && response.session) {
                     console.log('Active session detected:', response.session.name);
                     
-                    // Select the active session in dropdown
-                    $('#sessionSelect').val(response.session.sessionId);
-                    
-                    // Auto-connect to live preview
-                    startLivePreview(response.session.sessionId);
-                    
-                    // Show status in navbar (static, non-intrusive)
-                    $('#autoConnectText').text(response.session.name);
-                    $('#autoConnectStatus').removeClass('d-none').hide().fadeIn(300);
+                    // Use requestAnimationFrame to avoid blocking
+                    requestAnimationFrame(() => {
+                        // Select the active session in dropdown
+                        $('#sessionSelect').val(response.session.sessionId);
+                        
+                        // Show status in navbar (instant, no animation to avoid lag)
+                        $('#autoConnectText').text(response.session.name);
+                        $('#autoConnectStatus').removeClass('d-none').css('opacity', '1');
+                        
+                        // Auto-connect to live preview (async, don't block)
+                        setTimeout(() => {
+                            startLivePreview(response.session.sessionId);
+                        }, 0);
+                    });
                     
                     // Check periodically if session is still active (only create once!)
                     if (!activeSessionCheckInterval) {
@@ -726,21 +731,28 @@ $(document).ready(function() {
     }
     
     function checkActiveSessionStatus() {
+        // Use async to avoid blocking
         $.ajax({
             url: '/api/sessions/active',
             method: 'GET',
+            async: true, // Ensure non-blocking
             success: function(response) {
                 if (!response.active && liveSession) {
                     // Session ended, disconnect
                     console.log('Active session ended');
-                    if (liveSession) {
-                        liveSession.disconnect();
-                        liveSession = null;
-                        $('#liveIndicator').addClass('d-none');
-                        $('#autoConnectStatus').fadeOut(300);
-                        $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
-                    }
+                    requestAnimationFrame(() => {
+                        if (liveSession) {
+                            liveSession.disconnect();
+                            liveSession = null;
+                            $('#liveIndicator').addClass('d-none');
+                            $('#autoConnectStatus').css('opacity', '0').addClass('d-none');
+                            $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
+                        }
+                    });
                 }
+            },
+            error: function() {
+                // Ignore errors, don't block UI
             }
         });
     }
@@ -794,8 +806,8 @@ $(document).ready(function() {
                 liveSession = null;
                 // Hide LIVE indicator
                 $('#liveIndicator').addClass('d-none');
-                // Hide auto-connect status
-                $('#autoConnectStatus').fadeOut(300);
+                // Hide auto-connect status (instant, no animation)
+                $('#autoConnectStatus').css('opacity', '0').addClass('d-none');
             }
             $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
             $('#startLiveBtn').off('click');
