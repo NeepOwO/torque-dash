@@ -16,6 +16,8 @@ class DashboardEditor {
         this.dragOffset = { x: 0, y: 0 };
         this.rotateStartAngle = 0;
         this.rotateCenter = { x: 0, y: 0 };
+        this.animationFrameId = null;
+        this.isAnimating = false;
         
         this.config = {
             gridSize: 20,
@@ -33,7 +35,7 @@ class DashboardEditor {
         
         this.setupCanvas();
         this.setupEventListeners();
-        this.render();
+        this.startAnimationLoop();
     }
 
     setupCanvas() {
@@ -394,7 +396,7 @@ class DashboardEditor {
                 widget.instance.setValue(value);
             }
         });
-        this.render();
+        // No need to call render() - animation loop handles it
     }
     
     updateGPSData(gpsData) {
@@ -430,6 +432,26 @@ class DashboardEditor {
             this.render();
         };
         img.src = url;
+    }
+    
+    startAnimationLoop() {
+        if (this.isAnimating) return;
+        this.isAnimating = true;
+        
+        const animate = () => {
+            this.render();
+            this.animationFrameId = requestAnimationFrame(animate);
+        };
+        
+        animate();
+    }
+    
+    stopAnimationLoop() {
+        this.isAnimating = false;
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
     }
     
     render() {
