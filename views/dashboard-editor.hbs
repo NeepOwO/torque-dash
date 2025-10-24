@@ -102,9 +102,9 @@
         </div>
 
         <!-- Canvas Area -->
-        <div class="col-md-7 p-0" style="overflow: auto; background: #2a2a2a; position: relative;">
-            <div class="canvas-scrollable" style="overflow: auto; width: 100%; height: calc(100vh - 60px); position: relative;">
-                <div class="canvas-container" style="display: inline-block; position: relative;">
+        <div class="col-md-7 p-0 canvas-scroll-wrapper">
+            <div class="canvas-scrollable">
+                <div class="canvas-container">
                     <canvas id="dashboardCanvas"></canvas>
                 </div>
             </div>
@@ -923,6 +923,54 @@ body {
 
 .widget-palette button {
     text-align: left;
+}
+
+/* Canvas scroll area with visible scrollbars */
+.canvas-scroll-wrapper {
+    background: #2a2a2a;
+    position: relative;
+    overflow: hidden;
+}
+
+.canvas-scrollable {
+    width: 100%;
+    height: calc(100vh - 60px);
+    overflow: auto;
+    position: relative;
+    /* Force scrollbars to always be visible */
+    scrollbar-width: thin;
+    scrollbar-color: #666 #2a2a2a;
+}
+
+/* Webkit scrollbars (Chrome, Safari, Edge) */
+.canvas-scrollable::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.canvas-scrollable::-webkit-scrollbar-track {
+    background: #2a2a2a;
+    border: 1px solid #444;
+}
+
+.canvas-scrollable::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 6px;
+    border: 2px solid #2a2a2a;
+}
+
+.canvas-scrollable::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+.canvas-scrollable::-webkit-scrollbar-corner {
+    background: #2a2a2a;
+}
+
+.canvas-container {
+    display: inline-block;
+    position: relative;
+    padding: 20px;
 }
 </style>
 
