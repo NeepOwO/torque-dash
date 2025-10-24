@@ -58,7 +58,7 @@ class DashboardWidget {
             showValue: true,           // Show numeric value
             showLabel: true,           // Show label
             showUnit: true,            // Show unit
-            valuePosition: 'center',   // 'center', 'top', 'bottom', 'custom'
+            valuePosition: 'bottom',   // 'center', 'top', 'bottom', 'custom'
             valueCustomX: 0,           // Custom X position (if valuePosition='custom')
             valueCustomY: 0,           // Custom Y position (if valuePosition='custom')
             valueFormat: '0',          // '0', '0.0', '0.00'
