@@ -77,10 +77,8 @@ class PageController {
     
     static async renderDashboardEditor(req, res) {
         res.render('dashboard-editor', {
-            dashboard: true,
-            dashboardEditor: true,
+            layout: false, // Dashboard editor has its own layout
             userEmail: req.user.email,
-            loggedIn: true,
             dashboardId: req.params.dashboardId || 'new'
         });
     }
