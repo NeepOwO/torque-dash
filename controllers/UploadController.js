@@ -62,12 +62,23 @@ class UploadController {
             }
 
             //Check if session already exists or create new
+            const sessionDate = new Date();
+            const sessionName = sessionDate.toLocaleString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            }).replace(',', '');
+            
             let currentSession = await Session.findOrCreate({
                 where: {
                     sessionId: session
                 },
                 defaults: {
-                    userId: user.id
+                    userId: user.id,
+                    name: sessionName
                 }
             });
 
