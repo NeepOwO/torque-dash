@@ -27,7 +27,15 @@
     <div class="navbar-brand mr-auto p-2">
         <a class="navbar-brand" href="/">torque<b>DASH</b></a>
     </div>
-    <div class="p-2">
+    <div class="p-2 d-flex align-items-center">
+        <!-- Auto-connect status indicator -->
+        <div id="autoConnectStatus" class="mr-3 d-none" style="background: rgba(40, 167, 69, 0.2); padding: 4px 12px; border-radius: 4px; border: 1px solid #28a745;">
+            <i class="fas fa-plug text-success mr-1"></i>
+            <span class="text-success" style="font-size: 13px; font-weight: 500;">
+                <span id="autoConnectText">Connected</span>
+            </span>
+        </div>
+        
         <span class="text-white mr-3">Dashboard Editor</span>
         <button id="saveBtn" class="btn btn-sm btn-success mr-2">
             <i class="fas fa-save"></i> Save
@@ -696,14 +704,9 @@ $(document).ready(function() {
                     // Auto-connect to live preview
                     startLivePreview(response.session.sessionId);
                     
-                    // Show notification (non-blocking, lightweight)
-                    if (!$('#auto-connect-notification').length) {
-                        const notification = $('<div id="auto-connect-notification" class="alert alert-success alert-dismissible fade show position-fixed" style="top: 70px; right: 20px; z-index: 9999;">')
-                            .html(`<strong>Auto-connected!</strong> Receiving live data from: ${response.session.name}
-                                   <button type="button" class="close" data-dismiss="alert">&times;</button>`);
-                        $('body').append(notification);
-                        setTimeout(() => notification.alert('close'), 3000);
-                    }
+                    // Show status in navbar (static, non-intrusive)
+                    $('#autoConnectText').text(response.session.name);
+                    $('#autoConnectStatus').removeClass('d-none').hide().fadeIn(300);
                     
                     // Check periodically if session is still active (only create once!)
                     if (!activeSessionCheckInterval) {
@@ -734,6 +737,7 @@ $(document).ready(function() {
                         liveSession.disconnect();
                         liveSession = null;
                         $('#liveIndicator').addClass('d-none');
+                        $('#autoConnectStatus').fadeOut(300);
                         $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
                     }
                 }
@@ -790,6 +794,8 @@ $(document).ready(function() {
                 liveSession = null;
                 // Hide LIVE indicator
                 $('#liveIndicator').addClass('d-none');
+                // Hide auto-connect status
+                $('#autoConnectStatus').fadeOut(300);
             }
             $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
             $('#startLiveBtn').off('click');
