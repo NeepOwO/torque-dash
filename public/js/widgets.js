@@ -436,7 +436,10 @@ class CircularGauge extends DashboardWidget {
             // Draw numbers
             if (this.config.showNumbers && isMajor) {
                 const value = this.config.minValue + (this.config.maxValue - this.config.minValue) * (i / tickCount);
-                const textRadius = radius - 20 - this.config.tickLength * 2;
+                
+                // Calculate text position with configurable offset
+                const numberOffset = this.config.numberOffset || 10;
+                const textRadius = radius - 20 - tickLen - numberOffset;
                 const textX = centerX + Math.cos(angleRad) * textRadius;
                 const textY = centerY + Math.sin(angleRad) * textRadius;
                 

@@ -243,6 +243,12 @@ function createPropertiesPanel(widget) {
                     <label>Tick Length</label>
                     <input type="number" class="form-control form-control-sm" id="prop-tick-length" min="1" max="50" value="${config.tickLength || 10}">
                 </div>
+                
+                <div class="form-group">
+                    <label>Number Offset <small class="text-muted">(gap from ticks)</small></label>
+                    <input type="number" class="form-control form-control-sm" id="prop-number-offset" min="0" max="50" value="${config.numberOffset || 10}">
+                    <small class="text-muted">Distance between tick marks and scale numbers</small>
+                </div>
             </div>
             ` : ''}
 
