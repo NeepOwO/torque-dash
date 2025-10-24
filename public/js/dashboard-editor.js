@@ -277,9 +277,16 @@ class DashboardEditor {
             ...config
         };
         
+        // Find max z-index
+        const maxZIndex = this.widgets.length > 0 
+            ? Math.max(...this.widgets.map(w => w.zIndex || 0))
+            : 0;
+        
         const widget = {
             id: 'widget_' + Date.now(),
             ...defaultConfig,
+            zIndex: maxZIndex + 1,
+            rotation: 0,
             instance: null
         };
         
@@ -329,6 +336,46 @@ class DashboardEditor {
             }
             this.widgets.splice(index, 1);
             this.selectedWidget = null;
+            this.render();
+        }
+    }
+    
+    bringToFront(widget) {
+        const maxZIndex = Math.max(...this.widgets.map(w => w.zIndex || 0));
+        widget.zIndex = maxZIndex + 1;
+        this.render();
+    }
+    
+    sendToBack(widget) {
+        const minZIndex = Math.min(...this.widgets.map(w => w.zIndex || 0));
+        widget.zIndex = minZIndex - 1;
+        this.render();
+    }
+    
+    moveUp(widget) {
+        // Sort widgets by zIndex
+        const sorted = [...this.widgets].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        const currentIndex = sorted.indexOf(widget);
+        
+        if (currentIndex < sorted.length - 1) {
+            const nextWidget = sorted[currentIndex + 1];
+            const temp = widget.zIndex;
+            widget.zIndex = nextWidget.zIndex;
+            nextWidget.zIndex = temp;
+            this.render();
+        }
+    }
+    
+    moveDown(widget) {
+        // Sort widgets by zIndex
+        const sorted = [...this.widgets].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        const currentIndex = sorted.indexOf(widget);
+        
+        if (currentIndex > 0) {
+            const prevWidget = sorted[currentIndex - 1];
+            const temp = widget.zIndex;
+            widget.zIndex = prevWidget.zIndex;
+            prevWidget.zIndex = temp;
             this.render();
         }
     }
