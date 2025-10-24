@@ -87,31 +87,52 @@ class UploadController {
                 const modeSource = config.liveOnlyMode ? 'global' : 'user';
                 console.log(`[LIVE-ONLY ${modeSource}] Streaming data from session ${session} (user: ${eml})`);
                 
-                // Store in memory for quick access
-                liveDataStore.set(session, {
-                    sessionId: session,
-                    timestamp: Date.now(),
-                    lon: lon,
-                    lat: lat,
-                    values: values,
-                    userId: user.id,
-                    email: eml,
-                    liveOnlyMode: true,
-                    modeSource: modeSource
+                // PRIORITY 1: Emit real-time data via WebSocket IMMEDIATELY (no await!)
+                if (global.io) {
+                    setImmediate(() => {
+                        global.io.to(`session-${session}`).emit('sensor-data', {
+                            sessionId: session,
+                            timestamp: timestamp,
+                            lon: lon,
+                            lat: lat,
+                            values: values
+                        });
+                    });
+                }
+                
+                // PRIORITY 2: Store in memory (async, don't wait)
+                setImmediate(() => {
+                    liveDataStore.set(session, {
+                        sessionId: session,
+                        timestamp: Date.now(),
+                        lon: lon,
+                        lat: lat,
+                        values: values,
+                        userId: user.id,
+                        email: eml,
+                        liveOnlyMode: true,
+                        modeSource: modeSource
+                    });
                 });
 
-                // Update session with latest data only
-                await currentSession[0].update({
+                // PRIORITY 3: Update session with latest data (async, don't wait)
+                currentSession[0].update({
                     latestData: {
                         timestamp: timestamp,
                         lon: lon,
                         lat: lat,
                         ...values
                     }
-                });
+                }).catch(err => console.error('Error updating session:', err));
 
-                // Emit real-time data via WebSocket
-                if (global.io) {
+                return res.status(200).send(`OK! [LIVE-ONLY ${modeSource.toUpperCase()} - NO LOGS SAVED]`);
+            }
+
+            // NORMAL MODE: Save logs to database
+            
+            // PRIORITY 1: Emit real-time data via WebSocket IMMEDIATELY (before DB operations!)
+            if (global.io) {
+                setImmediate(() => {
                     global.io.to(`session-${session}`).emit('sensor-data', {
                         sessionId: session,
                         timestamp: timestamp,
@@ -119,12 +140,10 @@ class UploadController {
                         lat: lat,
                         values: values
                     });
-                }
-
-                return res.status(200).send(`OK! [LIVE-ONLY ${modeSource.toUpperCase()} - NO LOGS SAVED]`);
+                });
             }
-
-            // NORMAL MODE: Save logs to database
+            
+            // PRIORITY 2: Database operations (can be slower)
             //Check if timestamp already exists as torque app is spamming multiple requests
             let log = await Log.findOne({
                 where: {
@@ -143,27 +162,15 @@ class UploadController {
                 values: values
             });
 
-            // Update session with latest data
-            await currentSession[0].update({
+            // Update session with latest data (async, don't block response)
+            currentSession[0].update({
                 latestData: {
                     timestamp: timestamp,
                     lon: lon,
                     lat: lat,
                     ...values
                 }
-            });
-
-            // Emit real-time data via WebSocket
-            if (global.io) {
-                const sessionRoomId = session;
-                global.io.to(`session-${sessionRoomId}`).emit('sensor-data', {
-                    sessionId: sessionRoomId,
-                    timestamp: timestamp,
-                    lon: lon,
-                    lat: lat,
-                    values: values
-                });
-            }
+            }).catch(err => console.error('Error updating session:', err));
 
             if (log) res.status(200).send('OK!');
         } catch (err) {
