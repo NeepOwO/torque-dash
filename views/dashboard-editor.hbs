@@ -332,6 +332,22 @@
 <script src="/js/lib/bootstrap.bundle.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js" integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg==" crossorigin=""></script>
+
+<!-- Load PID names for sensor mapping -->
+<script>
+// Load PID names from server
+window.pidNames = {};
+fetch('/torquekeys.json')
+    .then(res => res.json())
+    .then(data => {
+        window.pidNames = data;
+        console.log('✓ Loaded PID names:', Object.keys(data).length);
+    })
+    .catch(err => {
+        console.warn('Failed to load PID names:', err);
+    });
+</script>
+
 <script src="/js/widgets.js"></script>
 <script src="/js/dashboard-editor.js"></script>
 <script src="/js/widget-properties-ui.js"></script>
@@ -621,6 +637,9 @@ $(document).ready(function() {
         socket.emit('join-session', sessionId);
         socket.on('sensor-data', function(data) {
             if (data.values) {
+                // AUTO-POPULATE SENSORS: Extract sensor keys from incoming data
+                autoPopulateSensors(data.values);
+                
                 // Update regular widgets
                 Object.keys(data.values).forEach(key => {
                     const value = parseFloat(data.values[key]);
@@ -655,6 +674,38 @@ $(document).ready(function() {
                 startLivePreview($('#sessionSelect').val());
             });
         });
+    }
+
+    // Auto-populate sensor dropdown when live data comes in
+    let knownSensors = new Set();
+    function autoPopulateSensors(values) {
+        const sensorSelect = $('#prop-sensor');
+        if (!sensorSelect.length) return; // Sensor dropdown not visible yet
+        
+        let updated = false;
+        
+        // Add any new sensors from incoming data
+        Object.keys(values).forEach(key => {
+            // Skip system fields
+            if (key === 'timestamp' || key === 'lat' || key === 'lon') return;
+            
+            // Skip if already added
+            if (knownSensors.has(key)) return;
+            
+            knownSensors.add(key);
+            
+            // Check if option already exists
+            if (sensorSelect.find(`option[value="${key}"]`).length === 0) {
+                // Get sensor name from pidNames if available
+                const sensorName = window.pidNames && window.pidNames[key] ? window.pidNames[key] : key;
+                sensorSelect.append(`<option value="${key}">${sensorName} (${key})</option>`);
+                updated = true;
+            }
+        });
+        
+        if (updated) {
+            console.log(`✓ Auto-populated ${knownSensors.size} sensors from live data`);
+        }
     }
 
     function openSettings() {
