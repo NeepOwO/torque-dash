@@ -4,6 +4,32 @@
  */
 
 function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
+    // Layer controls
+    $('#btn-bring-front').on('click', function() {
+        editor.bringToFront(widget);
+        // Refresh properties to show new z-index
+        const event = new CustomEvent('widget-properties', { detail: { widget: widget } });
+        document.dispatchEvent(event);
+    });
+    
+    $('#btn-send-back').on('click', function() {
+        editor.sendToBack(widget);
+        const event = new CustomEvent('widget-properties', { detail: { widget: widget } });
+        document.dispatchEvent(event);
+    });
+    
+    $('#btn-move-up').on('click', function() {
+        editor.moveUp(widget);
+        const event = new CustomEvent('widget-properties', { detail: { widget: widget } });
+        document.dispatchEvent(event);
+    });
+    
+    $('#btn-move-down').on('click', function() {
+        editor.moveDown(widget);
+        const event = new CustomEvent('widget-properties', { detail: { widget: widget } });
+        document.dispatchEvent(event);
+    });
+    
     // Sensor mapping
     $('#prop-sensor').on('change', function() {
         widget.sensorKey = $(this).val();

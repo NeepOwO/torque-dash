@@ -408,8 +408,11 @@ class DashboardEditor {
             this.drawGrid();
         }
         
+        // Sort widgets by z-index before drawing
+        const sortedWidgets = [...this.widgets].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+        
         // Draw all widgets
-        this.widgets.forEach(widget => {
+        sortedWidgets.forEach(widget => {
             if (widget.instance) {
                 widget.instance.draw();
                 
@@ -574,6 +577,7 @@ class DashboardEditor {
                 width: w.width,
                 height: w.height,
                 rotation: w.rotation || 0,
+                zIndex: w.zIndex || 0,
                 sensorKey: w.sensorKey,
                 config: w.instance ? w.instance.config : {}
             }))
@@ -609,6 +613,7 @@ class DashboardEditor {
                     width: widgetData.width,
                     height: widgetData.height,
                     rotation: widgetData.rotation || 0,
+                    zIndex: widgetData.zIndex || 0,
                     sensorKey: widgetData.sensorKey,
                     config: widgetData.config
                 };

@@ -17,6 +17,27 @@ function createPropertiesPanel(widget) {
             <i class="fas fa-cube"></i> 
             <span id="widget-title">${widget.type}</span>
         </h6>
+        
+        <!-- Layer Controls -->
+        <div class="mb-3">
+            <label class="d-block"><i class="fas fa-layer-group mr-2"></i>Layer Order (Z-Index: ${widget.zIndex || 0})</label>
+            <div class="btn-group btn-group-sm d-flex" role="group">
+                <button type="button" class="btn btn-outline-primary" id="btn-bring-front" title="Bring to Front">
+                    <i class="fas fa-arrow-up"></i><i class="fas fa-arrow-up"></i> Front
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btn-move-up" title="Move Up">
+                    <i class="fas fa-arrow-up"></i> Up
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btn-move-down" title="Move Down">
+                    <i class="fas fa-arrow-down"></i> Down
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btn-send-back" title="Send to Back">
+                    <i class="fas fa-arrow-down"></i><i class="fas fa-arrow-down"></i> Back
+                </button>
+            </div>
+        </div>
+        
+        <hr>
 
         <!-- Sensor Mapping -->
         <div class="form-group">
