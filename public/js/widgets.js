@@ -1067,6 +1067,12 @@ class GPSMapWidget extends DashboardWidget {
     initMap() {
         if (this.initialized || typeof L === 'undefined') return;
         
+        // Check if we're in editor mode (canvas has no proper parent)
+        if (!this.canvas.parentNode || this.canvas.parentNode.tagName !== 'DIV') {
+            console.log('GPS Map: Editor mode detected, showing placeholder');
+            return;
+        }
+        
         // Create map container div
         this.mapContainer = document.createElement('div');
         this.mapContainer.style.width = this.canvas.width + 'px';
@@ -1325,17 +1331,28 @@ class GPSMapWidget extends DashboardWidget {
             this.initMap();
         }
         
+        // Always draw placeholder in editor mode or when no data
         if (!this.map || this.currentLat === null || this.currentLon === null) {
             // Draw placeholder
             this.clear();
-            this.ctx.fillStyle = this.config.backgroundColor;
+            this.ctx.fillStyle = '#2a2a2a';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
-            this.ctx.fillStyle = this.config.textColor;
-            this.ctx.font = '14px Arial';
+            // Draw map icon
+            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.font = '48px "Font Awesome 5 Free"';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
-            this.ctx.fillText('GPS Map - Waiting for data...', this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.fillText('\uf279', this.canvas.width / 2, this.canvas.height / 2 - 30);
+            
+            // Draw text
+            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.font = 'bold 16px Arial';
+            this.ctx.fillText('GPS Map Widget', this.canvas.width / 2, this.canvas.height / 2 + 30);
+            
+            this.ctx.fillStyle = '#999';
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText('Will display live GPS tracking', this.canvas.width / 2, this.canvas.height / 2 + 50);
             return;
         }
         
