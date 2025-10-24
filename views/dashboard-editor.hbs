@@ -436,12 +436,17 @@ $(document).ready(function() {
 
     // Preview button
     let previewViewer = null;
+    let previewAnimationId = null;
+    let isPreviewActive = false;
+    
     $('#previewBtn').click(function() {
         // Show preview modal
         $('#previewModal').modal('show');
         
         // Initialize preview viewer after modal is shown
         $('#previewModal').on('shown.bs.modal', function() {
+            isPreviewActive = true;
+            
             if (!previewViewer) {
                 const canvas = document.getElementById('previewCanvas');
                 const config = editor.config;
@@ -458,12 +463,17 @@ $(document).ready(function() {
                 };
             }
             
-            // Render widgets in preview
+            // Start rendering preview
             renderPreview();
         });
         
         // Clean up on modal close
         $('#previewModal').on('hidden.bs.modal', function() {
+            isPreviewActive = false;
+            if (previewAnimationId) {
+                cancelAnimationFrame(previewAnimationId);
+                previewAnimationId = null;
+            }
             if (previewViewer) {
                 previewViewer = null;
             }
@@ -471,7 +481,7 @@ $(document).ready(function() {
     });
     
     function renderPreview() {
-        if (!previewViewer) return;
+        if (!previewViewer || !isPreviewActive) return;
         
         const ctx = previewViewer.ctx;
         const canvas = previewViewer.canvas;
@@ -505,12 +515,12 @@ $(document).ready(function() {
                 tempCanvas.height = widget.height;
                 const tempCtx = tempCanvas.getContext('2d');
                 
-                // Draw widget on temp canvas
+                // Draw widget on temp canvas (widget draws itself with current value)
                 const originalCanvas = widget.instance.canvas;
                 const originalCtx = widget.instance.ctx;
                 widget.instance.canvas = tempCanvas;
                 widget.instance.ctx = tempCtx;
-                widget.instance.draw();
+                widget.instance.draw(); // This uses current widget value!
                 widget.instance.canvas = originalCanvas;
                 widget.instance.ctx = originalCtx;
                 
@@ -529,8 +539,10 @@ $(document).ready(function() {
             }
         });
         
-        // Continue animation loop
-        requestAnimationFrame(renderPreview);
+        // Continue animation loop only if preview is active
+        if (isPreviewActive) {
+            previewAnimationId = requestAnimationFrame(renderPreview);
+        }
     }
 
     // Session select
