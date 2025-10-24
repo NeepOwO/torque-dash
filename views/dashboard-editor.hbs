@@ -118,6 +118,26 @@
     </div>
 </div>
 
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl" style="max-width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-eye mr-2"></i>Dashboard Preview</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center p-0" style="background: #2a2a2a; min-height: 500px;">
+                <canvas id="previewCanvas" style="box-shadow: 0 0 20px rgba(0,0,0,0.5);"></canvas>
+            </div>
+            <div class="modal-footer bg-dark">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Settings Modal -->
 <div class="modal fade" id="settingsModal" tabindex="-1">
     <div class="modal-dialog">
@@ -339,13 +359,72 @@ $(document).ready(function() {
     });
 
     // Preview button
+    let previewViewer = null;
     $('#previewBtn').click(function() {
-        if (dashboardId !== 'new') {
-            window.open(`/dashboard/view/${dashboardId}`, '_blank');
-        } else {
-            alert('Please save the dashboard first');
-        }
+        // Show preview modal
+        $('#previewModal').modal('show');
+        
+        // Initialize preview viewer after modal is shown
+        $('#previewModal').on('shown.bs.modal', function() {
+            if (!previewViewer) {
+                const canvas = document.getElementById('previewCanvas');
+                const config = editor.config;
+                
+                // Set canvas size
+                canvas.width = config.width || 1920;
+                canvas.height = config.height || 1080;
+                
+                // Create preview viewer instance
+                previewViewer = {
+                    canvas: canvas,
+                    ctx: canvas.getContext('2d'),
+                    widgets: []
+                };
+            }
+            
+            // Render widgets in preview
+            renderPreview();
+        });
+        
+        // Clean up on modal close
+        $('#previewModal').on('hidden.bs.modal', function() {
+            if (previewViewer) {
+                previewViewer = null;
+            }
+        });
     });
+    
+    function renderPreview() {
+        if (!previewViewer) return;
+        
+        const ctx = previewViewer.ctx;
+        const canvas = previewViewer.canvas;
+        
+        // Clear canvas
+        ctx.fillStyle = editor.config.backgroundColor || '#1a1a1a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Render each widget
+        editor.widgets.forEach(widget => {
+            if (widget.instance) {
+                // Save context
+                ctx.save();
+                
+                // Apply rotation if set
+                if (widget.rotation) {
+                    const cx = widget.x + widget.width / 2;
+                    const cy = widget.y + widget.height / 2;
+                    ctx.translate(cx, cy);
+                    ctx.rotate(widget.rotation * Math.PI / 180);
+                    ctx.drawImage(widget.canvas, -widget.width / 2, -widget.height / 2);
+                } else {
+                    ctx.drawImage(widget.canvas, widget.x, widget.y);
+                }
+                
+                ctx.restore();
+            }
+        });
+    }
 
     // Session select
     $('#sessionSelect').change(function() {
