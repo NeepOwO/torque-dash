@@ -330,6 +330,16 @@ function createPropertiesPanel(widget) {
                 </div>
                 
                 <div class="form-group">
+                    <label>Image Mode <small class="text-muted">(Important!)</small></label>
+                    <select class="form-control form-control-sm" id="prop-image-mode">
+                        <option value="background" ${config.imageMode === 'background' ? 'selected' : ''}>Background Only</option>
+                        <option value="dual" ${config.imageMode === 'dual' ? 'selected' : ''}>Dual (Background + Foreground)</option>
+                        <option value="overlay" ${config.imageMode === 'overlay' ? 'selected' : ''}>Overlay</option>
+                    </select>
+                    <small class="text-muted">Select "Dual" to enable foreground image fill effect</small>
+                </div>
+                
+                <div class="form-group">
                     <label>Image Fill Mode</label>
                     <select class="form-control form-control-sm" id="prop-image-fill-mode">
                         <option value="linear" ${config.imageFillMode === 'linear' || !config.imageFillMode ? 'selected' : ''}>Linear</option>

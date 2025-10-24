@@ -272,6 +272,12 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
         });
     });
     
+    // Image mode handler
+    $('#prop-image-mode').on('change', function() {
+        widget.instance.updateConfig({ imageMode: $(this).val() });
+        editor.render();
+    });
+    
     // Animation tab handlers
     $('#prop-smoothing').on('input', function() {
         const val = parseFloat($(this).val());
