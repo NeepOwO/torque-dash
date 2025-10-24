@@ -237,6 +237,11 @@ function setupPropertiesHandlers(widget, editor, uploadImage, browseImages) {
         editor.render();
     });
     
+    $('#prop-number-offset').on('input', function() {
+        widget.instance.updateConfig({ numberOffset: parseInt($(this).val()) });
+        editor.render();
+    });
+    
     // Colors tab handlers
     $('#prop-primary-color').on('input', function() {
         widget.instance.updateConfig({ primaryColor: $(this).val() });

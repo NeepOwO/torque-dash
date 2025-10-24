@@ -53,6 +53,7 @@ class DashboardWidget {
             showNumbers: true,    // Show numbers on scale
             majorTickInterval: 2, // Every Nth tick is major
             tickLength: 10,       // Tick mark length in pixels
+            numberOffset: 10,     // Distance between tick end and numbers (pixels)
             
             // Value Display
             showValue: true,           // Show numeric value
