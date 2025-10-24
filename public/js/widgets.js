@@ -20,6 +20,7 @@ class DashboardWidget {
         // Image layers
         this.backgroundImage = null;
         this.foregroundImage = null;
+        this.needleImage = null;
         this.loadImages();
         
         // Start smooth update loop if enabled
@@ -220,7 +221,8 @@ class DashboardWidget {
     updateConfig(newConfig) {
         const needsImageReload = 
             newConfig.backgroundImageUrl !== this.config.backgroundImageUrl ||
-            newConfig.foregroundImageUrl !== this.config.foregroundImageUrl;
+            newConfig.foregroundImageUrl !== this.config.foregroundImageUrl ||
+            newConfig.needleImageUrl !== this.config.needleImageUrl;
             
         this.config = { ...this.config, ...newConfig };
         
@@ -458,26 +460,56 @@ class CircularGauge extends DashboardWidget {
         const angleRange = endAngle - startAngle;
         const valueRatio = (this.value - this.config.minValue) / (this.config.maxValue - this.config.minValue);
         const angleRad = this.degToRad(startAngle + angleRange * valueRatio);
+        const angleDeg = startAngle + angleRange * valueRatio;
         
-        const needleLen = radius * this.config.needleLength;
-        const needleX = centerX + Math.cos(angleRad) * needleLen;
-        const needleY = centerY + Math.sin(angleRad) * needleLen;
-        
-        const color = this.config.needleColor || this.getColorForValue(this.value);
-        
-        // Needle
-        this.ctx.beginPath();
-        this.ctx.moveTo(centerX, centerY);
-        this.ctx.lineTo(needleX, needleY);
-        this.ctx.strokeStyle = color;
-        this.ctx.lineWidth = this.config.needleWidth;
-        this.ctx.stroke();
-        
-        // Center circle
-        this.ctx.beginPath();
-        this.ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
-        this.ctx.fillStyle = color;
-        this.ctx.fill();
+        // Use needle image if available
+        if (this.needleImage && this.needleImage.complete) {
+            this.ctx.save();
+            
+            // Move to center
+            this.ctx.translate(centerX, centerY);
+            
+            // Rotate to value angle + offset
+            const rotationOffset = this.config.needleRotationOffset || 0;
+            this.ctx.rotate(this.degToRad(angleDeg + rotationOffset));
+            
+            // Scale image
+            const scale = this.config.needleImageScale || 1.0;
+            const imgWidth = this.needleImage.width * scale;
+            const imgHeight = this.needleImage.height * scale;
+            
+            // Draw image centered at origin (center of gauge)
+            this.ctx.drawImage(
+                this.needleImage,
+                -imgWidth / 2,
+                -imgHeight / 2,
+                imgWidth,
+                imgHeight
+            );
+            
+            this.ctx.restore();
+        } else {
+            // Draw default needle (line + circle)
+            const needleLen = radius * this.config.needleLength;
+            const needleX = centerX + Math.cos(angleRad) * needleLen;
+            const needleY = centerY + Math.sin(angleRad) * needleLen;
+            
+            const color = this.config.needleColor || this.getColorForValue(this.value);
+            
+            // Needle line
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, centerY);
+            this.ctx.lineTo(needleX, needleY);
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = this.config.needleWidth;
+            this.ctx.stroke();
+            
+            // Center circle
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+            this.ctx.fillStyle = color;
+            this.ctx.fill();
+        }
     }
 
     drawValue(centerX, centerY, radius) {
