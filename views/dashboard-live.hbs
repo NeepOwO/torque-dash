@@ -60,21 +60,6 @@
             border-radius: 10px;
         }
 
-        .status-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #ff0000;
-            z-index: 1000;
-            opacity: 0.7;
-        }
-
-        .status-indicator.connected {
-            background: #00ff00;
-        }
     </style>
 </head>
 <body>
@@ -84,8 +69,6 @@
     </div>
     
     <div id="error" class="error" style="display: none;"></div>
-    
-    <div class="status-indicator" id="statusIndicator"></div>
     
     <canvas id="dashboardCanvas"></canvas>
 
@@ -124,7 +107,6 @@
                 // Connect to WebSocket
                 if (dashboard.activeSessionId) {
                     viewer.connectWebSocket(dashboard.activeSessionId, dashboard.id);
-                    updateStatusIndicator(true);
                 }
 
                 // Start rendering
@@ -137,13 +119,11 @@
                 if (viewer.socket) {
                     viewer.socket.on('connect', () => {
                         console.log('Connected to server');
-                        updateStatusIndicator(true);
                         reconnectAttempts = 0;
                     });
 
                     viewer.socket.on('disconnect', () => {
                         console.log('Disconnected from server');
-                        updateStatusIndicator(false);
                         
                         // Attempt reconnection
                         if (reconnectAttempts < maxReconnectAttempts) {
@@ -156,22 +136,12 @@
 
                     viewer.socket.on('connect_error', (error) => {
                         console.error('Connection error:', error);
-                        updateStatusIndicator(false);
                     });
                 }
 
             } catch (error) {
                 console.error('Initialization error:', error);
                 showError('Failed to load dashboard: ' + error.message);
-            }
-        }
-
-        function updateStatusIndicator(connected) {
-            const indicator = document.getElementById('statusIndicator');
-            if (connected) {
-                indicator.classList.add('connected');
-            } else {
-                indicator.classList.remove('connected');
             }
         }
 
