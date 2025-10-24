@@ -43,8 +43,8 @@ class DashboardWidget {
             textColor: '#ffffff',
             
             // Angles and Rotation (for circular widgets)
-            startAngle: 135,      // Starting angle in degrees (0-360) - default: bottom-left like car gauges
-            endAngle: 405,        // Ending angle in degrees (0-360+) - default: bottom-right, gap at bottom
+            startAngle: 225,      // Starting angle in degrees (0-360) - default: bottom-left like car gauges (8 o'clock)
+            endAngle: 495,        // Ending angle in degrees (0-360+) - default: bottom-right, gap at bottom (4 o'clock)
             rotation: 0,          // Widget rotation in degrees (0-360)
             
             // Ticks and Scale
@@ -313,8 +313,8 @@ class CircularGauge extends DashboardWidget {
     getDefaultConfig() {
         return {
             ...super.getDefaultConfig(),
-            startAngle: 135,
-            endAngle: 405,
+            startAngle: 225,
+            endAngle: 495,
             needleColor: '#ff0000',
             tickCount: 10,
             showTicks: true,
