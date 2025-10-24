@@ -102,9 +102,11 @@
         </div>
 
         <!-- Canvas Area -->
-        <div class="col-md-7 p-0" style="overflow: auto; background: #2a2a2a;">
-            <div class="canvas-container" style="display: inline-block;">
-                <canvas id="dashboardCanvas"></canvas>
+        <div class="col-md-7 p-0" style="overflow: auto; background: #2a2a2a; position: relative;">
+            <div class="canvas-scrollable" style="overflow: auto; width: 100%; height: calc(100vh - 60px); position: relative;">
+                <div class="canvas-container" style="display: inline-block; position: relative;">
+                    <canvas id="dashboardCanvas"></canvas>
+                </div>
             </div>
         </div>
 
@@ -160,6 +162,26 @@
                 <div class="form-group">
                     <label>Background Color</label>
                     <input type="color" class="form-control" id="settingsBackgroundColor">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-image mr-2"></i>Background Image</label>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" class="form-control" id="settingsBackgroundImage" placeholder="URL or path to image">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" type="button" onclick="uploadDashboardImage()">
+                                <i class="fas fa-upload"></i>
+                            </button>
+                            <button class="btn btn-outline-info" type="button" onclick="browseDashboardImages()">
+                                <i class="fas fa-folder-open"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <small class="text-muted">Recommended: 1920x1080px. Leave empty for solid color.</small>
+                </div>
+                <div class="form-group">
+                    <label>Background Image Opacity</label>
+                    <input type="range" class="custom-range" id="settingsBackgroundOpacity" min="0" max="1" step="0.1" value="1">
+                    <small class="text-muted">Opacity: <span id="bgOpacityValue">1.0</span></small>
                 </div>
                 <div class="form-group">
                     <label>Grid Size</label>
@@ -444,13 +466,23 @@ $(document).ready(function() {
     $('#saveSettings').click(function() {
         const newSettings = {
             backgroundColor: $('#settingsBackgroundColor').val(),
+            backgroundImage: $('#settingsBackgroundImage').val() || null,
+            backgroundImageOpacity: parseFloat($('#settingsBackgroundOpacity').val()),
             gridSize: parseInt($('#settingsGridSize').val()),
             showGrid: $('#settingsShowGrid').is(':checked'),
             snapToGrid: $('#settingsSnapToGrid').is(':checked')
         };
         
         editor.config = { ...editor.config, ...newSettings };
-        editor.render();
+        
+        // Load background image if changed
+        if (newSettings.backgroundImage) {
+            editor.loadBackgroundImage(newSettings.backgroundImage);
+        } else {
+            editor.backgroundImageObj = null;
+            editor.render();
+        }
+        
         $('#settingsModal').modal('hide');
     });
 
@@ -621,12 +653,120 @@ $(document).ready(function() {
         $('#settingsName').val(currentDashboard?.name || '');
         $('#settingsDescription').val(currentDashboard?.description || '');
         $('#settingsBackgroundColor').val(editor.config.backgroundColor);
+        $('#settingsBackgroundImage').val(editor.config.backgroundImage || '');
+        $('#settingsBackgroundOpacity').val(editor.config.backgroundImageOpacity || 1.0);
+        $('#bgOpacityValue').text((editor.config.backgroundImageOpacity || 1.0).toFixed(1));
         $('#settingsGridSize').val(editor.config.gridSize);
         $('#settingsShowGrid').prop('checked', editor.config.showGrid);
         $('#settingsSnapToGrid').prop('checked', editor.config.snapToGrid);
         $('#settingsModal').modal('show');
     }
+    
+    // Background opacity slider
+    $('#settingsBackgroundOpacity').on('input', function() {
+        $('#bgOpacityValue').text(parseFloat($(this).val()).toFixed(1));
+    });
 
+    // Upload dashboard background image
+    function uploadDashboardImage() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            try {
+                const response = await fetch('/api/images/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) throw new Error('Upload failed');
+                
+                const data = await response.json();
+                $('#settingsBackgroundImage').val(data.url);
+                
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Image uploaded!',
+                    text: 'Background image uploaded successfully',
+                    timer: 2000
+                });
+            } catch (error) {
+                console.error('Upload error:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload failed',
+                    text: 'Failed to upload image. Please try again.'
+                });
+            }
+        };
+        input.click();
+    }
+    
+    // Browse dashboard background images
+    function browseDashboardImages() {
+        fetch('/api/images')
+            .then(res => res.json())
+            .then(images => {
+                const modal = $(`
+                    <div class="modal fade" id="bgImageBrowserModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Select Background Image</h5>
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="row" id="bgImageGrid"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `);
+                
+                $('body').append(modal);
+                
+                const grid = modal.find('#bgImageGrid');
+                images.forEach(img => {
+                    const item = $(`
+                        <div class="col-md-3 mb-3">
+                            <div class="card" style="cursor: pointer;">
+                                <img src="${img.url}" class="card-img-top" style="height: 150px; object-fit: cover;">
+                                <div class="card-body p-2 text-center">
+                                    <small>${img.filename}</small>
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                    
+                    item.click(function() {
+                        $('#settingsBackgroundImage').val(img.url);
+                        modal.modal('hide');
+                    });
+                    
+                    grid.append(item);
+                });
+                
+                modal.modal('show');
+                modal.on('hidden.bs.modal', function() {
+                    modal.remove();
+                });
+            })
+            .catch(err => {
+                console.error('Failed to load images:', err);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Failed to load images',
+                    text: 'Please try again.'
+                });
+            });
+    }
+    
     function showWidgetProperties(widget) {
         const panel = $('#propertiesPanel');
         panel.empty();

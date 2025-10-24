@@ -21,12 +21,15 @@ class DashboardEditor {
             gridSize: 20,
             backgroundColor: '#1a1a1a',
             backgroundImage: null,
+            backgroundImageOpacity: 1.0,
             width: 1920,
             height: 1080,
             showGrid: true,
             snapToGrid: true,
             ...options
         };
+        
+        this.backgroundImageObj = null;
         
         this.setupCanvas();
         this.setupEventListeners();
@@ -361,14 +364,38 @@ class DashboardEditor {
         });
     }
 
+    loadBackgroundImage(url) {
+        if (!url) {
+            this.backgroundImageObj = null;
+            this.render();
+            return;
+        }
+        
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            this.backgroundImageObj = img;
+            this.render();
+        };
+        img.onerror = () => {
+            console.error('Failed to load background image:', url);
+            this.backgroundImageObj = null;
+            this.render();
+        };
+        img.src = url;
+    }
+    
     render() {
         // Clear canvas
         this.ctx.fillStyle = this.config.backgroundColor;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
         // Draw background image if set
-        if (this.config.backgroundImage) {
-            // TODO: Draw background image
+        if (this.backgroundImageObj) {
+            this.ctx.save();
+            this.ctx.globalAlpha = this.config.backgroundImageOpacity || 1.0;
+            this.ctx.drawImage(this.backgroundImageObj, 0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.restore();
         }
         
         // Draw grid
