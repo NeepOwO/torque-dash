@@ -51,28 +51,53 @@ class SessionController {
         try {
             const sessionId = req.params.sessionId;
             
-            // Get latest log from session
-            const log = await Log.findOne({
-                include: [{
-                    model: Session,
-                    where: { 
-                        id: sessionId,
-                        userId: req.user.id 
-                    }
-                }],
-                order: [['timestamp', 'DESC']]
+            // First, try to get session with latestData (works in live-only mode too)
+            const session = await Session.findOne({
+                where: {
+                    id: sessionId,
+                    userId: req.user.id
+                }
             });
             
-            if (!log) {
+            if (!session) {
+                return res.status(404).json({ error: 'Session not found' });
+            }
+            
+            let values = null;
+            
+            // Try to get data from latestData first (real-time or live-only mode)
+            if (session.latestData && Object.keys(session.latestData).length > 3) {
+                values = session.latestData;
+                console.log(`Using latestData from session ${sessionId}, keys:`, Object.keys(values).length);
+            } else {
+                // Fallback to getting latest log from database
+                const log = await Log.findOne({
+                    include: [{
+                        model: Session,
+                        where: { 
+                            id: sessionId,
+                            userId: req.user.id 
+                        }
+                    }],
+                    order: [['timestamp', 'DESC']]
+                });
+                
+                if (log) {
+                    values = log.getDataValue('values');
+                    console.log(`Using log data from session ${sessionId}`);
+                }
+            }
+            
+            if (!values) {
+                console.log(`No data found for session ${sessionId}`);
                 return res.json({ sensors: [] });
             }
             
             // Get all sensor keys from values
-            const values = log.getDataValue('values'); // Get raw values without conversion
             const sensors = [];
             
             for (const key in values) {
-                if (values.hasOwnProperty(key)) {
+                if (values.hasOwnProperty(key) && key !== 'timestamp' && key !== 'lat' && key !== 'lon') {
                     sensors.push({
                         key: key,
                         name: pidNames[key] || key,
@@ -84,6 +109,7 @@ class SessionController {
             // Sort by name
             sensors.sort((a, b) => a.name.localeCompare(b.name));
             
+            console.log(`✓ Returning ${sensors.length} sensors for session ${sessionId}`);
             res.json({ sensors });
         } catch (err) {
             console.error('Error getting available sensors:', err);
