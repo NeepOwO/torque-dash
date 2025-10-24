@@ -477,29 +477,60 @@ $(document).ready(function() {
         const canvas = previewViewer.canvas;
         
         // Clear canvas
-        ctx.fillStyle = editor.config.backgroundColor || '#1a1a1a';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw background color (if not transparent)
+        if (editor.config.backgroundColor !== 'transparent') {
+            ctx.fillStyle = editor.config.backgroundColor || '#1a1a1a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // Draw background image if set
+        if (editor.backgroundImageObj) {
+            ctx.save();
+            ctx.globalAlpha = editor.config.backgroundImageOpacity || 1.0;
+            ctx.drawImage(editor.backgroundImageObj, 0, 0, canvas.width, canvas.height);
+            ctx.restore();
+        }
+        
+        // Sort widgets by z-index before drawing
+        const sortedWidgets = [...editor.widgets].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
         
         // Render each widget
-        editor.widgets.forEach(widget => {
+        sortedWidgets.forEach(widget => {
             if (widget.instance) {
-                // Save context
-                ctx.save();
+                // Create a temporary canvas for the widget
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = widget.width;
+                tempCanvas.height = widget.height;
+                const tempCtx = tempCanvas.getContext('2d');
                 
-                // Apply rotation if set
+                // Draw widget on temp canvas
+                const originalCanvas = widget.instance.canvas;
+                const originalCtx = widget.instance.ctx;
+                widget.instance.canvas = tempCanvas;
+                widget.instance.ctx = tempCtx;
+                widget.instance.draw();
+                widget.instance.canvas = originalCanvas;
+                widget.instance.ctx = originalCtx;
+                
+                // Draw temp canvas on preview with rotation
+                ctx.save();
                 if (widget.rotation) {
                     const cx = widget.x + widget.width / 2;
                     const cy = widget.y + widget.height / 2;
                     ctx.translate(cx, cy);
                     ctx.rotate(widget.rotation * Math.PI / 180);
-                    ctx.drawImage(widget.canvas, -widget.width / 2, -widget.height / 2);
+                    ctx.drawImage(tempCanvas, -widget.width / 2, -widget.height / 2);
                 } else {
-                    ctx.drawImage(widget.canvas, widget.x, widget.y);
+                    ctx.drawImage(tempCanvas, widget.x, widget.y);
                 }
-                
                 ctx.restore();
             }
         });
+        
+        // Continue animation loop
+        requestAnimationFrame(renderPreview);
     }
 
     // Session select
@@ -607,6 +638,8 @@ $(document).ready(function() {
         }
     }
 
+    let activeSessionCheckInterval = null;
+    
     function loadSessions() {
         $.ajax({
             url: '/api/sessions',
@@ -637,15 +670,21 @@ $(document).ready(function() {
                     // Auto-connect to live preview
                     startLivePreview(response.session.sessionId);
                     
-                    // Show notification
-                    const notification = $('<div class="alert alert-success alert-dismissible fade show position-fixed" style="top: 70px; right: 20px; z-index: 9999;">')
-                        .html(`<strong>Auto-connected!</strong> Receiving live data from: ${response.session.name}
-                               <button type="button" class="close" data-dismiss="alert">&times;</button>`);
-                    $('body').append(notification);
-                    setTimeout(() => notification.alert('close'), 5000);
+                    // Show notification (non-blocking, lightweight)
+                    if (!$('#auto-connect-notification').length) {
+                        const notification = $('<div id="auto-connect-notification" class="alert alert-success alert-dismissible fade show position-fixed" style="top: 70px; right: 20px; z-index: 9999;">')
+                            .html(`<strong>Auto-connected!</strong> Receiving live data from: ${response.session.name}
+                                   <button type="button" class="close" data-dismiss="alert">&times;</button>`);
+                        $('body').append(notification);
+                        setTimeout(() => notification.alert('close'), 3000);
+                    }
                     
-                    // Check periodically if session is still active
-                    setInterval(checkActiveSession, 30000);
+                    // Check periodically if session is still active (only create once!)
+                    if (!activeSessionCheckInterval) {
+                        activeSessionCheckInterval = setInterval(() => {
+                            checkActiveSessionStatus();
+                        }, 30000);
+                    }
                 } else {
                     // Check again in 5 seconds if no active session
                     setTimeout(checkActiveSession, 5000);
@@ -653,6 +692,25 @@ $(document).ready(function() {
             },
             error: function(err) {
                 console.error('Failed to check active session:', err);
+            }
+        });
+    }
+    
+    function checkActiveSessionStatus() {
+        $.ajax({
+            url: '/api/sessions/active',
+            method: 'GET',
+            success: function(response) {
+                if (!response.active && liveSession) {
+                    // Session ended, disconnect
+                    console.log('Active session ended');
+                    if (liveSession) {
+                        liveSession.disconnect();
+                        liveSession = null;
+                        $('#liveIndicator').addClass('d-none');
+                        $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
+                    }
+                }
             }
         });
     }
