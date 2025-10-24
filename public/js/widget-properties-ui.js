@@ -42,18 +42,11 @@ function createPropertiesPanel(widget) {
         <!-- Sensor Mapping -->
         <div class="form-group">
             <label><i class="fas fa-satellite-dish"></i> Sensor</label>
-            <div class="input-group input-group-sm">
-                <select class="form-control" id="prop-sensor">
-                    <option value="">No sensors loaded...</option>
-                    ${widget.sensorKey ? `<option value="${widget.sensorKey}" selected>${widget.sensorKey}</option>` : ''}
-                </select>
-                <div class="input-group-append">
-                    <button class="btn btn-outline-info btn-sm" type="button" id="load-sensors-btn" title="Load sensors from active session">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-            </div>
-            <small class="text-muted"><strong>Important:</strong> Click <i class="fas fa-sync-alt"></i> to load sensors from a session</small>
+            <select class="form-control form-control-sm" id="prop-sensor">
+                <option value="">Waiting for live data...</option>
+                ${widget.sensorKey ? `<option value="${widget.sensorKey}" selected>${widget.sensorKey}</option>` : ''}
+            </select>
+            <small class="text-muted">Sensors will appear automatically when Torque Pro starts sending data</small>
         </div>
 
         <hr>

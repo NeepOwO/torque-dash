@@ -714,10 +714,9 @@ $(document).ready(function() {
 
     // Auto-populate sensor dropdown when live data comes in
     let knownSensors = new Set();
+    let allSensorsData = {}; // Store all sensor keys with their names
+    
     function autoPopulateSensors(values) {
-        const sensorSelect = $('#prop-sensor');
-        if (!sensorSelect.length) return; // Sensor dropdown not visible yet
-        
         let updated = false;
         
         // Add any new sensors from incoming data
@@ -730,19 +729,54 @@ $(document).ready(function() {
             
             knownSensors.add(key);
             
-            // Check if option already exists
-            if (sensorSelect.find(`option[value="${key}"]`).length === 0) {
-                // Get sensor name from pidNames if available
-                const sensorName = window.pidNames && window.pidNames[key] ? window.pidNames[key] : key;
-                sensorSelect.append(`<option value="${key}">${sensorName} (${key})</option>`);
-                updated = true;
-            }
+            // Get sensor name from pidNames if available
+            const sensorName = window.pidNames && window.pidNames[key] ? window.pidNames[key] : key;
+            allSensorsData[key] = sensorName;
+            updated = true;
         });
         
+        // Update ALL existing sensor dropdowns (important for when properties panel opens later)
         if (updated) {
+            updateAllSensorDropdowns();
             console.log(`✓ Auto-populated ${knownSensors.size} sensors from live data`);
         }
     }
+    
+    function updateAllSensorDropdowns() {
+        // Find all sensor dropdowns (current and future)
+        const sensorSelect = $('#prop-sensor');
+        if (!sensorSelect.length) return; // Dropdown not visible yet
+        
+        const currentValue = sensorSelect.val(); // Save current selection
+        
+        // Clear all options except the first placeholder
+        sensorSelect.find('option:not(:first)').remove();
+        
+        // Add all known sensors (sorted by name)
+        const sortedKeys = Object.keys(allSensorsData).sort((a, b) => {
+            return allSensorsData[a].localeCompare(allSensorsData[b]);
+        });
+        
+        sortedKeys.forEach(key => {
+            const sensorName = allSensorsData[key];
+            sensorSelect.append(`<option value="${key}">${sensorName} (${key})</option>`);
+        });
+        
+        // Restore previous selection if it exists
+        if (currentValue && sensorSelect.find(`option[value="${currentValue}"]`).length > 0) {
+            sensorSelect.val(currentValue);
+        }
+    }
+    
+    // Update sensor dropdowns when properties panel opens
+    document.addEventListener('widget-properties', function(e) {
+        // Wait a bit for DOM to render, then update dropdowns
+        setTimeout(function() {
+            if (knownSensors.size > 0) {
+                updateAllSensorDropdowns();
+            }
+        }, 100);
+    });
 
     function openSettings() {
         $('#settingsName').val(currentDashboard?.name || '');
