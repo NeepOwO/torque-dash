@@ -486,58 +486,72 @@ $(document).ready(function() {
         const ctx = previewViewer.ctx;
         const canvas = previewViewer.canvas;
         
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw background color (if not transparent)
-        if (editor.config.backgroundColor !== 'transparent') {
-            ctx.fillStyle = editor.config.backgroundColor || '#1a1a1a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        
-        // Draw background image if set
-        if (editor.backgroundImageObj) {
-            ctx.save();
-            ctx.globalAlpha = editor.config.backgroundImageOpacity || 1.0;
-            ctx.drawImage(editor.backgroundImageObj, 0, 0, canvas.width, canvas.height);
-            ctx.restore();
-        }
-        
-        // Sort widgets by z-index before drawing
-        const sortedWidgets = [...editor.widgets].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-        
-        // Render each widget
-        sortedWidgets.forEach(widget => {
-            if (widget.instance) {
-                // Create a temporary canvas for the widget
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = widget.width;
-                tempCanvas.height = widget.height;
-                const tempCtx = tempCanvas.getContext('2d');
-                
-                // Draw widget on temp canvas (widget draws itself with current value)
-                const originalCanvas = widget.instance.canvas;
-                const originalCtx = widget.instance.ctx;
-                widget.instance.canvas = tempCanvas;
-                widget.instance.ctx = tempCtx;
-                widget.instance.draw(); // This uses current widget value!
-                widget.instance.canvas = originalCanvas;
-                widget.instance.ctx = originalCtx;
-                
-                // Draw temp canvas on preview with rotation
+        try {
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw background color (if not transparent)
+            if (editor.config.backgroundColor !== 'transparent') {
+                ctx.fillStyle = editor.config.backgroundColor || '#1a1a1a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+            
+            // Draw background image if set
+            if (editor.backgroundImageObj) {
                 ctx.save();
-                if (widget.rotation) {
-                    const cx = widget.x + widget.width / 2;
-                    const cy = widget.y + widget.height / 2;
-                    ctx.translate(cx, cy);
-                    ctx.rotate(widget.rotation * Math.PI / 180);
-                    ctx.drawImage(tempCanvas, -widget.width / 2, -widget.height / 2);
-                } else {
-                    ctx.drawImage(tempCanvas, widget.x, widget.y);
-                }
+                ctx.globalAlpha = editor.config.backgroundImageOpacity || 1.0;
+                ctx.drawImage(editor.backgroundImageObj, 0, 0, canvas.width, canvas.height);
                 ctx.restore();
             }
-        });
+            
+            // Sort widgets by z-index before drawing
+            const sortedWidgets = [...editor.widgets].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+            
+            // Render each widget
+            sortedWidgets.forEach(widget => {
+                if (widget.instance) {
+                    try {
+                        // Create a temporary canvas for the widget
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = widget.width;
+                        tempCanvas.height = widget.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        
+                        // IMPORTANT: Store original canvas/ctx
+                        const originalCanvas = widget.instance.canvas;
+                        const originalCtx = widget.instance.ctx;
+                        
+                        // Temporarily set temp canvas
+                        widget.instance.canvas = tempCanvas;
+                        widget.instance.ctx = tempCtx;
+                        
+                        // Draw widget with current value (getValue() returns live data!)
+                        widget.instance.draw();
+                        
+                        // IMPORTANT: Restore original canvas/ctx immediately
+                        widget.instance.canvas = originalCanvas;
+                        widget.instance.ctx = originalCtx;
+                        
+                        // Draw temp canvas on preview with rotation
+                        ctx.save();
+                        if (widget.rotation) {
+                            const cx = widget.x + widget.width / 2;
+                            const cy = widget.y + widget.height / 2;
+                            ctx.translate(cx, cy);
+                            ctx.rotate(widget.rotation * Math.PI / 180);
+                            ctx.drawImage(tempCanvas, -widget.width / 2, -widget.height / 2);
+                        } else {
+                            ctx.drawImage(tempCanvas, widget.x, widget.y);
+                        }
+                        ctx.restore();
+                    } catch (widgetError) {
+                        console.error('Error rendering widget in preview:', widgetError);
+                    }
+                }
+            });
+        } catch (error) {
+            console.error('Error in renderPreview:', error);
+        }
         
         // Continue animation loop only if preview is active
         if (isPreviewActive) {
@@ -744,7 +758,7 @@ $(document).ready(function() {
                 // AUTO-POPULATE SENSORS: Extract sensor keys from incoming data
                 autoPopulateSensors(data.values);
                 
-                // Update regular widgets
+                // Update regular widgets (both editor and preview use same instances!)
                 Object.keys(data.values).forEach(key => {
                     const value = parseFloat(data.values[key]);
                     if (!isNaN(value)) {
@@ -763,6 +777,9 @@ $(document).ready(function() {
                         bearing: parseFloat(data.values['kff123b']) || 0
                     });
                 }
+                
+                // Log for debugging
+                console.log('Sensor data updated:', Object.keys(data.values).length, 'sensors');
             }
         });
         liveSession = socket;
