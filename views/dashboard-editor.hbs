@@ -62,7 +62,13 @@
     <div class="row" style="height: calc(100vh - 60px); margin: 0;">
         <!-- Widget Panel -->
         <div class="col-md-2 bg-light border-right p-3" style="overflow-y: auto;">
-            <h6>Widgets</h6>
+            <div class="d-flex align-items-center mb-3">
+                <h6 class="mb-0 mr-2">Widgets</h6>
+                <span id="liveIndicator" class="live-indicator d-none">
+                    <i class="fas fa-circle text-success blink"></i> 
+                    <small class="text-success">LIVE</small>
+                </span>
+            </div>
             <div class="widget-palette">
                 <button class="btn btn-block btn-sm btn-outline-primary mb-2" data-widget="speedometer">
                     <i class="fas fa-tachometer-alt"></i> Speedometer
@@ -270,6 +276,31 @@
     color: #856404 !important;
     border-color: #ffc107 !important;
     background-color: white !important;
+}
+
+/* Live Indicator */
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 11px;
+}
+
+.live-indicator i {
+    font-size: 8px;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0.3; }
+}
+
+.blink {
+    animation: blink 1.5s infinite;
 }
 
 /* Sidebar */
@@ -637,6 +668,9 @@ $(document).ready(function() {
         socket.emit('join-session', sessionId);
         socket.on('sensor-data', function(data) {
             if (data.values) {
+                // Show LIVE indicator
+                $('#liveIndicator').removeClass('d-none');
+                
                 // AUTO-POPULATE SENSORS: Extract sensor keys from incoming data
                 autoPopulateSensors(data.values);
                 
@@ -667,6 +701,8 @@ $(document).ready(function() {
             if (liveSession) {
                 liveSession.disconnect();
                 liveSession = null;
+                // Hide LIVE indicator
+                $('#liveIndicator').addClass('d-none');
             }
             $('#startLiveBtn').text('Start Live').removeClass('btn-danger').addClass('btn-success');
             $('#startLiveBtn').off('click');
