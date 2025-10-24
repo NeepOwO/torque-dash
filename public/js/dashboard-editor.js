@@ -586,6 +586,11 @@ class DashboardEditor {
         if (config.settings) {
             this.config = { ...this.config, ...config.settings };
             this.setupCanvas();
+            
+            // Load background image if present
+            if (this.config.backgroundImage) {
+                this.loadBackgroundImage(this.config.backgroundImage);
+            }
         }
         
         // Load widgets
