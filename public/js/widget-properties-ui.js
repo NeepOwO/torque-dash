@@ -23,18 +23,8 @@ function createPropertiesPanel(widget) {
             <label><i class="fas fa-satellite-dish"></i> Sensor</label>
             <div class="input-group input-group-sm">
                 <select class="form-control" id="prop-sensor">
-                    <option value="">Select sensor...</option>
-                    <option value="kc" ${widget.sensorKey === 'kc' ? 'selected' : ''}>Engine RPM</option>
-                    <option value="kd" ${widget.sensorKey === 'kd' ? 'selected' : ''}>Speed (OBD)</option>
-                    <option value="kff1001" ${widget.sensorKey === 'kff1001' ? 'selected' : ''}>Speed (GPS)</option>
-                    <option value="k5" ${widget.sensorKey === 'k5' ? 'selected' : ''}>Coolant Temp</option>
-                    <option value="kf" ${widget.sensorKey === 'kf' ? 'selected' : ''}>Intake Air Temp</option>
-                    <option value="kb" ${widget.sensorKey === 'kb' ? 'selected' : ''}>Manifold Pressure</option>
-                    <option value="k4" ${widget.sensorKey === 'k4' ? 'selected' : ''}>Engine Load</option>
-                    <option value="k10" ${widget.sensorKey === 'k10' ? 'selected' : ''}>MAF Rate</option>
-                    <option value="k2f" ${widget.sensorKey === 'k2f' ? 'selected' : ''}>Fuel Level</option>
-                    <option value="kff1225" ${widget.sensorKey === 'kff1225' ? 'selected' : ''}>Torque</option>
-                    <option value="kff1226" ${widget.sensorKey === 'kff1226' ? 'selected' : ''}>Horsepower</option>
+                    <option value="">No sensors loaded...</option>
+                    ${widget.sensorKey ? `<option value="${widget.sensorKey}" selected>${widget.sensorKey}</option>` : ''}
                 </select>
                 <div class="input-group-append">
                     <button class="btn btn-outline-info btn-sm" type="button" id="load-sensors-btn" title="Load sensors from active session">
@@ -42,7 +32,7 @@ function createPropertiesPanel(widget) {
                     </button>
                 </div>
             </div>
-            <small class="text-muted">Click <i class="fas fa-sync-alt"></i> to load from session</small>
+            <small class="text-muted"><strong>Important:</strong> Click <i class="fas fa-sync-alt"></i> to load sensors from a session</small>
         </div>
 
         <hr>
