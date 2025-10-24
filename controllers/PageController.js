@@ -3,8 +3,6 @@ const Dashboard = require('../models').Dashboard;
 
 class PageController {
     static async renderOverview(req, res) {
-        console.log('=== renderOverview called ===');
-        console.log('Rendering with flags: dashboard=true, overview=true, settings=', req.body.settings || req.query.settings || 'undefined');
         res.render('dashboard', {
             dashboard: true,
             overview: true,
@@ -61,8 +59,6 @@ class PageController {
     }
     
     static async renderSettings(req, res) {
-        console.log('=== renderSettings called ===');
-        console.log('Rendering with flags: settingsPage=true');
         res.render('settings', {
             settingsPage: true,
             userEmail: req.user.email,
