@@ -62,9 +62,9 @@ class PageController {
     
     static async renderSettings(req, res) {
         console.log('=== renderSettings called ===');
-        console.log('Rendering with flags: settings=true');
+        console.log('Rendering with flags: settingsPage=true');
         res.render('settings', {
-            settings: true,
+            settingsPage: true,
             userEmail: req.user.email,
             loggedIn: true
         });
