@@ -159,7 +159,14 @@
                     <label>Description</label>
                     <textarea class="form-control" id="settingsDescription" rows="3"></textarea>
                 </div>
-                <div class="form-group">
+                <div class="form-check mb-3">
+                    <input type="checkbox" class="form-check-input" id="settingsTransparentBg">
+                    <label class="form-check-label" for="settingsTransparentBg">
+                        <i class="fas fa-eye-slash mr-1"></i>Transparent Background (no color, only image)
+                    </label>
+                </div>
+                
+                <div class="form-group" id="bgColorGroup">
                     <label>Background Color</label>
                     <input type="color" class="form-control" id="settingsBackgroundColor">
                 </div>
@@ -464,8 +471,9 @@ $(document).ready(function() {
 
     // Save settings
     $('#saveSettings').click(function() {
+        const isTransparent = $('#settingsTransparentBg').is(':checked');
         const newSettings = {
-            backgroundColor: $('#settingsBackgroundColor').val(),
+            backgroundColor: isTransparent ? 'transparent' : $('#settingsBackgroundColor').val(),
             backgroundImage: $('#settingsBackgroundImage').val() || null,
             backgroundImageOpacity: parseFloat($('#settingsBackgroundOpacity').val()),
             gridSize: parseInt($('#settingsGridSize').val()),
@@ -652,7 +660,12 @@ $(document).ready(function() {
     function openSettings() {
         $('#settingsName').val(currentDashboard?.name || '');
         $('#settingsDescription').val(currentDashboard?.description || '');
-        $('#settingsBackgroundColor').val(editor.config.backgroundColor);
+        
+        const isTransparent = editor.config.backgroundColor === 'transparent';
+        $('#settingsTransparentBg').prop('checked', isTransparent);
+        $('#bgColorGroup').toggle(!isTransparent);
+        $('#settingsBackgroundColor').val(isTransparent ? '#1a1a1a' : editor.config.backgroundColor);
+        
         $('#settingsBackgroundImage').val(editor.config.backgroundImage || '');
         $('#settingsBackgroundOpacity').val(editor.config.backgroundImageOpacity || 1.0);
         $('#bgOpacityValue').text((editor.config.backgroundImageOpacity || 1.0).toFixed(1));
@@ -665,6 +678,15 @@ $(document).ready(function() {
     // Background opacity slider
     $('#settingsBackgroundOpacity').on('input', function() {
         $('#bgOpacityValue').text(parseFloat($(this).val()).toFixed(1));
+    });
+    
+    // Transparent background toggle
+    $('#settingsTransparentBg').on('change', function() {
+        const isTransparent = $(this).is(':checked');
+        $('#bgColorGroup').toggle(!isTransparent);
+        if (isTransparent) {
+            $('#settingsBackgroundColor').val('transparent');
+        }
     });
 
     // Upload dashboard background image

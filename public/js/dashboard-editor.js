@@ -387,8 +387,13 @@ class DashboardEditor {
     
     render() {
         // Clear canvas
-        this.ctx.fillStyle = this.config.backgroundColor;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Draw background color (if not transparent)
+        if (this.config.backgroundColor !== 'transparent') {
+            this.ctx.fillStyle = this.config.backgroundColor;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
         
         // Draw background image if set
         if (this.backgroundImageObj) {
