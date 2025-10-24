@@ -43,8 +43,8 @@ class DashboardWidget {
             textColor: '#ffffff',
             
             // Angles and Rotation (for circular widgets)
-            startAngle: 0,        // Starting angle in degrees (0-360)
-            endAngle: 360,        // Ending angle in degrees (0-360)
+            startAngle: 135,      // Starting angle in degrees (0-360) - default: bottom-left like car gauges
+            endAngle: 405,        // Ending angle in degrees (0-360+) - default: bottom-right, gap at bottom
             rotation: 0,          // Widget rotation in degrees (0-360)
             
             // Ticks and Scale
